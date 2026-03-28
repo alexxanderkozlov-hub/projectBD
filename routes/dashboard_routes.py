@@ -55,9 +55,9 @@ def show_products(handler):
                 <td style="border: 1px solid #adb5bd; padding: 10px; text-align: right;">{p[3]} ₽</td>
                 <td style="border: 1px solid #adb5bd; padding: 10px; text-align: center;">{p[2]}</td>
                 <td style="border: 1px solid #adb5bd; padding: 10px; text-align: center;">
-                    <a href="/edit_product?id={p[0]}" style="color: #28a745; text-decoration: none; font-weight: bold; margin-right: 10px;">[изм]</a>
+                    <a href="/edit_product?id={p[0]}" style="color: #28a745; text-decoration: none; font-weight: bold; margin-right: 10px;">[изменить]</a>
                     <a href="/delete_product?id={p[0]}" style="color: #dc3545; text-decoration: none; font-weight: bold;" 
-                       onclick="return confirm('Удалить товар ID {p[0]}?')">[удл]</a>
+                       onclick="return confirm('Удалить товар ID {p[0]}?')">[удалить]</a>
                 </td>
             </tr>
             """

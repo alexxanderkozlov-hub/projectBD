@@ -8,55 +8,99 @@ from routes.dashboard_routes import dashboard
 
 class MyHandler(BaseHTTPRequestHandler):
     # ================= ГЛОБАЛЬНОЕ СОСТОЯНИЕ =================
-    # Используем словари на уровне класса для хранения данных между запросами
     sessions = {}  # session_id -> {"user": user_dict, "2fa": bool}
-    codes = {}  # session_id -> 2FA code
+    codes = {}     # session_id -> 2FA code
 
     # ================= GET =================
     def do_GET(self):
-        # Парсим путь, чтобы отделить сам адрес от параметров (?tab=products)
         parsed_path = urllib.parse.urlparse(self.path)
         path = parsed_path.path
 
         print(f"GET запрос: {path}")
 
+        # 1. Главная страница (Логин)
         if path == "/":
             self.render("templates/login.html")
 
+        # 2. Двухфакторная аутентификация
         elif path == "/2fa":
-            # Проверяем, есть ли вообще сессия, прежде чем пускать на ввод кода
             if not self.get_session():
                 self.redirect("/")
                 return
             self.render("templates/2fa.html")
 
+        # 3. Главная панель (Дашборд)
         elif path == "/dashboard":
             session = self.get_session()
-            # 1. Нет сессии — на логин
-            if not session:
+            if not session or not session.get("2fa"):
                 self.redirect("/")
                 return
-            # 2. Сессия есть, но 2FA еще False — на ввод кода
-            if not session.get("2fa"):
-                self.redirect("/2fa")
-                return
-            # 3. Всё успешно — вызываем логику дашборда
             dashboard(self)
 
-        # --- НОВЫЙ БЛОК: СТРАНИЦА ПРОДУКТОВ ---
+        # 4. Список продуктов
         elif path == "/products":
             session = self.get_session()
-            # Проверка: залогинен ли пользователь и прошел ли он 2FA
             if not session or not session.get("2fa"):
-                print("Доступ к продуктам запрещен: нет авторизации")
+                self.redirect("/")
+                return
+            from routes.dashboard_routes import show_products
+            show_products(self)
+
+        # 5. Удаление продукта
+        elif path == "/delete_product":
+            session = self.get_session()
+            if not session or not session.get("2fa"):
                 self.redirect("/")
                 return
 
-            # Импортируем функцию отрисовки (если она в другом файле)
-            from routes.dashboard_routes import show_products
-            show_products(self)
-        # --------------------------------------
+            query = urllib.parse.parse_qs(parsed_path.query)
+            product_id = query.get("id", [None])[0]
 
+            if product_id:
+                from models.product_model import delete_product_by_id
+                delete_product_by_id(product_id)
+
+            self.redirect("/products")
+
+        # 6. Страница добавления (Отображение пустой формы)
+        elif path == "/add_product":
+            session = self.get_session()
+            if not session or not session.get("2fa"):
+                self.redirect("/")
+                return
+            self.render("templates/add_product.html")
+
+        # 7. Страница редактирования (Отображение формы с данными)
+        elif path == "/edit_product":
+            session = self.get_session()
+            if not session or not session.get("2fa"):
+                self.redirect("/")
+                return
+
+            query = urllib.parse.parse_qs(parsed_path.query)
+            product_id = query.get("id", [None])[0]
+
+            if product_id:
+                from models.product_model import get_product_by_id
+                p = get_product_by_id(product_id)
+                if p:
+                    with open("templates/edit_product.html", "r", encoding="utf-8") as f:
+                        html = f.read()
+
+                    html = html.replace("{{ID}}", str(p[0]))
+                    html = html.replace("{{NAME}}", str(p[1]))
+                    html = html.replace("{{VERSION}}", str(p[2]))
+                    html = html.replace("{{PRICE}}", str(p[3]))
+
+                    self.send_response(200)
+                    self.send_header("Content-type", "text/html; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(html.encode("utf-8"))
+                    return
+
+            self.redirect("/products")
+
+        # 8. Статика
         elif path.startswith("/static/"):
             self.serve_static()
 
@@ -75,51 +119,71 @@ class MyHandler(BaseHTTPRequestHandler):
 
         print(f"POST запрос: {self.path}")
 
+        # Авторизация
         if self.path == "/login":
             login(self, data)
-
         elif self.path == "/verify":
             verify(self, data)
+
+        # Обработка добавления нового продукта
+        elif self.path == "/add_product":
+            session = self.get_session()
+            if not session or not session.get("2fa"):
+                self.redirect("/")
+                return
+
+            name = data.get("name", [None])[0]
+            version = data.get("version", [None])[0]
+            price = data.get("price", [None])[0]
+
+            if name and version and price:
+                from models.product_model import add_product
+                add_product(name, version, price)
+
+            self.redirect("/products")
+
+        # Обработка сохранения изменений продукта
+        elif self.path == "/edit_product":
+            session = self.get_session()
+            if not session or not session.get("2fa"):
+                self.redirect("/")
+                return
+
+            p_id = data.get("product_id", [None])[0]
+            name = data.get("name", [None])[0]
+            version = data.get("version", [None])[0]
+            price = data.get("price", [None])[0]
+
+            if p_id and name and version and price:
+                from models.product_model import update_product
+                update_product(p_id, name, version, price)
+
+            self.redirect("/products")
 
         else:
             self.send_error(404, "Not Found")
 
-    # ================= SESSION MANAGEMENT =================
+    # ================= ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ (Остаются без изменений) =================
     def get_session(self):
-        """Извлекает сессию из куки session_id"""
         cookie_header = self.headers.get("Cookie")
-        if not cookie_header:
-            return None
-
-        # Парсим куки в словарь
+        if not cookie_header: return None
         cookies = {}
         for entry in cookie_header.split(";"):
             if "=" in entry:
                 key, val = entry.strip().split("=", 1)
                 cookies[key] = val
-
         session_id = cookies.get("session_id")
-        if not session_id:
-            return None
-
-        # Обращаемся к словарю через класс, чтобы данные были видны всем запросам
         return MyHandler.sessions.get(session_id)
 
     def get_user(self):
-        """Возвращает данные пользователя из текущей сессии"""
         session = self.get_session()
-        if session:
-            return session.get("user")
-        return None
+        return session.get("user") if session else None
 
-    # ================= ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ =================
     def serve_static(self):
-        # Убираем начальный слэш и проверяем существование файла
         file_path = self.path.lstrip("/")
         if not os.path.exists(file_path):
             self.send_error(404)
             return
-
         try:
             with open(file_path, "rb") as f:
                 content = f.read()
@@ -127,33 +191,27 @@ class MyHandler(BaseHTTPRequestHandler):
             self.send_header("Content-type", self.mime_type(file_path))
             self.end_headers()
             self.wfile.write(content)
-        except Exception as e:
-            print(f"Ошибка статики: {e}")
-            self.send_error(500)
+        except: self.send_error(500)
 
     def mime_type(self, path):
         if path.endswith(".css"): return "text/css"
         if path.endswith(".js"): return "application/javascript"
         if path.endswith(".png"): return "image/png"
-        if path.endswith(".jpg") or path.endswith(".jpeg"): return "image/jpeg"
+        if path.endswith(".jpg"): return "image/jpeg"
         return "application/octet-stream"
 
     def render(self, path):
-        """Загружает HTML шаблон и отправляет его клиенту"""
         if not os.path.exists(path):
-            self.send_error(404, f"Шаблон {path} не найден")
+            self.send_error(404)
             return
-
         with open(path, "r", encoding="utf-8") as f:
             html = f.read()
-
         self.send_response(200)
         self.send_header("Content-type", "text/html; charset=utf-8")
         self.end_headers()
         self.wfile.write(html.encode("utf-8"))
 
     def redirect(self, path):
-        """Выполняет HTTP редирект"""
         self.send_response(302)
         self.send_header("Location", path)
         self.end_headers()
