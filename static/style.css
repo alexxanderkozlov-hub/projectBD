@@ -1,4 +1,4 @@
-/* 1. Общие стили страницы (Body) */
+/* 1. Общие стили страницы */
 body {
     margin: 0;
     padding: 0;
@@ -6,123 +6,119 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f0f2f5; /* Светло-серый фон всей страницы */
+    /* Стандартные шрифты, которые есть везде */
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: #e9ecef;
 }
 
-/* 2. Шапка (Header) - Линия удалена здесь */
+/* 2. Шапка - простая, с четкой рамкой */
 .header {
     width: 100%;
-    background: #ffffff; /* Белый фон шапки */
-    padding: 40px 0;
+    background: #343a40; /* Темно-серый «админский» цвет */
+    color: white;
+    padding: 20px 0;
     text-align: center;
-    /* border-bottom: 1px solid #ddd;  <-- ЭТА СТРОКА УДАЛЕНА */
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05); /* Легкая тень вместо линии */
-    margin-bottom: 40px;
+    border-bottom: 2px solid #212529;
+    margin-bottom: 30px;
 }
 
 .header h1 {
     margin: 0;
-    color: #1a1a1a;
-    font-size: 28px;
+    font-size: 24px;
+    text-transform: uppercase; /* Строгий стиль */
 }
 
 /* 3. Контейнер для авторизации (Box) */
 .box {
     background: white;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    padding: 25px;
+    border: 2px solid #dee2e6; /* Вместо тени — обычная рамка */
+    border-radius: 4px; /* Почти острые углы */
     width: 300px;
     text-align: center;
-    margin-top: 50px;
 }
 
 /* 4. Поля ввода и кнопки */
 input {
     width: 100%;
-    padding: 12px;
+    padding: 8px;
     margin: 10px 0;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    box-sizing: border-box; /* Чтобы padding не раздувал ширину */
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    box-sizing: border-box;
     outline: none;
-    transition: border-color 0.3s;
 }
 
 input:focus {
-    border-color: #3498db;
+    border-color: #80bdff;
 }
 
 button {
     width: 100%;
-    padding: 12px;
-    background: #1a1a1a;
+    padding: 10px;
+    background: #007bff; /* Классический синий цвет кнопки */
     color: white;
-    border: none;
-    border-radius: 8px;
+    border: 1px solid #0069d9;
+    border-radius: 4px;
     cursor: pointer;
-    font-weight: 600;
-    transition: background 0.3s;
+    font-weight: bold;
 }
 
 button:hover {
-    background: #333;
+    background: #0069d9;
 }
 
-/* 5. Сетка Дашборда (Menu Grid) */
+/* 5. Сетка Дашборда */
 .menu-grid {
     display: grid;
-    grid-template-columns: repeat(2, 220px); /* 2 колонки */
-    gap: 25px;
+    grid-template-columns: repeat(2, 200px);
+    gap: 15px;
     justify-content: center;
-    padding: 20px;
+    padding: 10px;
 }
 
-/* 6. Карточки навигации (Nav Cards) */
+/* 6. Кнопки-карточки - теперь более грубые */
 .nav-card {
-    background: white;
-    border: 1px solid #eee;
-    border-radius: 16px;
-    padding: 40px 20px;
+    background: #ffffff;
+    border: 2px solid #adb5bd; /* Четкая серая рамка */
+    border-radius: 4px;
+    padding: 30px 10px;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    font-size: 18px;
-    font-weight: 600;
-    color: #2c3e50;
+    font-size: 16px;
+    font-weight: bold;
+    color: #495057;
     display: flex;
     flex-direction: column;
     align-items: center;
     text-decoration: none;
+    /* Убрали трансформацию (выпрыгивание) и тени */
 }
 
 .nav-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 15px 30px rgba(0,0,0,0.1);
-    border-color: #1abc9c;
-    color: #1abc9c;
+    background: #f8f9fa;
+    border-color: #6c757d;
+    color: #212529;
 }
 
-/* 7. Кнопка выхода (Logout) */
+/* 7. Кнопка выхода - простая красная рамка */
 .logout-card {
-    grid-column: span 2; /* На всю ширину */
-    background: #fff5f5;
-    color: #e74c3c;
-    border-color: #fad1d1;
-    padding: 20px;
-    margin-top: 10px;
+    grid-column: span 2;
+    background: #f8d7da;
+    color: #721c24;
+    border-color: #f5c6cb;
+    padding: 15px;
 }
 
 .logout-card:hover {
-    background: #e74c3c;
+    background: #dc3545;
     color: white;
-    border-color: #e74c3c;
+    border-color: #bd2130;
 }
 
 /* Дополнительные мелочи */
 .hint {
-    font-size: 12px;
-    color: gray;
-    margin-top: 15px;
-    line-height: 1.4;
+    font-size: 11px;
+    color: #6c757d;
+    margin-top: 10px;
+    text-align: left;
 }

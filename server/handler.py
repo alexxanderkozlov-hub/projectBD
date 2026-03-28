@@ -14,7 +14,7 @@ class MyHandler(BaseHTTPRequestHandler):
 
     # ================= GET =================
     def do_GET(self):
-        # Парсим путь, чтобы отделить сам адрес от параметров (?tab= products)
+        # Парсим путь, чтобы отделить сам адрес от параметров (?tab=products)
         parsed_path = urllib.parse.urlparse(self.path)
         path = parsed_path.path
 
@@ -32,21 +32,30 @@ class MyHandler(BaseHTTPRequestHandler):
 
         elif path == "/dashboard":
             session = self.get_session()
-
             # 1. Нет сессии — на логин
             if not session:
-                print("Сессия не найдена, редирект на /")
+                self.redirect("/")
+                return
+            # 2. Сессия есть, но 2FA еще False — на ввод кода
+            if not session.get("2fa"):
+                self.redirect("/2fa")
+                return
+            # 3. Всё успешно — вызываем логику дашборда
+            dashboard(self)
+
+        # --- НОВЫЙ БЛОК: СТРАНИЦА ПРОДУКТОВ ---
+        elif path == "/products":
+            session = self.get_session()
+            # Проверка: залогинен ли пользователь и прошел ли он 2FA
+            if not session or not session.get("2fa"):
+                print("Доступ к продуктам запрещен: нет авторизации")
                 self.redirect("/")
                 return
 
-            # 2. Сессия есть, но 2FA еще False — на ввод кода
-            if not session.get("2fa"):
-                print("2FA не пройдена, редирект на /2fa")
-                self.redirect("/2fa")
-                return
-
-            # 3. Всё успешно — вызываем логику дашборда
-            dashboard(self)
+            # Импортируем функцию отрисовки (если она в другом файле)
+            from routes.dashboard_routes import show_products
+            show_products(self)
+        # --------------------------------------
 
         elif path.startswith("/static/"):
             self.serve_static()
