@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Панель управления</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div class="header">
+        <h2>Управление магазином ПО</h2>
+        <p>Администратор: <b>{{ADMIN_NAME}}</b></p>
+    </div>
+
+    <div class="menu-grid">
+        <div class="nav-card" onclick="location.href='/dashboard?tab=products'">
+            <span>📦</span> Продукты
+        </div>
+
+        <div class="nav-card" onclick="location.href='/dashboard?tab=licenses'">
+            <span>📜</span> Лицензии
+        </div>
+
+        <div class="nav-card" onclick="location.href='/dashboard?tab=keys'">
+            <span>🔑</span> Ключи
+        </div>
+
+        <div class="nav-card" onclick="location.href='/dashboard?tab=orders'">
+            <span>💰</span> Покупки
+        </div>
+
+        <div class="nav-card logout-card" onclick="location.href='/'">
+            Выйти из системы
+        </div>
+    </div>
+
+    <div style="margin-top: 30px;">
+        {{CONTENT}}
+    </div>
+
+</body>
+</html>
