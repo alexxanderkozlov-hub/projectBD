@@ -55,6 +55,15 @@ class MyHandler(BaseHTTPRequestHandler):
             from routes.dashboard_routes import show_licenses
             show_licenses(self)
 
+        # 4.2 Ключи (Список) — ДОБАВЛЕНО
+        elif path == "/keys":
+            session = self.get_session()
+            if not session or not session.get("2fa"):
+                self.redirect("/")
+                return
+            from routes.dashboard_routes import show_keys
+            show_keys(self)
+
         # 5. Удаление продукта
         elif path == "/delete_product":
             session = self.get_session()
@@ -81,6 +90,30 @@ class MyHandler(BaseHTTPRequestHandler):
                 delete_license_by_id(lic_id)
             self.redirect("/licenses")
 
+        # 5.2 Удаление ключа — ДОБАВЛЕНО
+        elif path == "/delete_key":
+            session = self.get_session()
+            if not session or not session.get("2fa"):
+                self.redirect("/")
+                return
+            query = urllib.parse.parse_qs(parsed_path.query)
+            key_id = query.get("id", [None])[0]
+            if key_id:
+                from models.key_model import delete_key_by_id
+                delete_key_by_id(key_id)
+            self.redirect("/keys")
+
+        elif path == "/change_key_status":
+            query = urllib.parse.parse_qs(parsed_path.query)
+            key_id = query.get("id", [None])[0]
+            new_status = query.get("status", [None])[0]
+
+            if key_id and new_status:
+                from models.key_model import update_key_status
+                update_key_status(key_id, new_status)
+
+            self.redirect("/keys")
+
         # 6. Добавление продукта (Страница)
         elif path == "/add_product":
             session = self.get_session()
@@ -95,21 +128,30 @@ class MyHandler(BaseHTTPRequestHandler):
             if not session or not session.get("2fa"):
                 self.redirect("/")
                 return
-
             from models.product_model import get_all_products
             products = get_all_products()
-
-            # Читаем шаблон формы выдачи лицензии
             with open("templates/add_license.html", "r", encoding="utf-8") as f:
                 html = f.read()
-
-            # Генерируем выпадающий список из реальных продуктов в БД
-            options = ""
-            for p in products:
-                options += f'<option value="{p[0]}">{p[1]} (v.{p[2]})</option>'
-
+            options = "".join([f'<option value="{p[0]}">{p[1]} (v.{p[2]})</option>' for p in products])
             html = html.replace("{{PRODUCT_OPTIONS}}", options)
+            self.send_response(200)
+            self.send_header("Content-type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(html.encode("utf-8"))
 
+        # 6.2 Генерация ключа (Страница с формой) — ДОБАВЛЕНО
+        elif path == "/add_key":
+            session = self.get_session()
+            if not session or not session.get("2fa"):
+                self.redirect("/")
+                return
+            from models.license_model import get_all_licenses
+            lics = get_all_licenses()
+            with open("templates/add_key.html", "r", encoding="utf-8") as f:
+                html = f.read()
+            # l[0]-id, l[1]-название продукта, l[2]-тип
+            options = "".join([f'<option value="{l[0]}">{l[1]} ({l[2]}) - ID:{l[0]}</option>' for l in lics])
+            html = html.replace("{{LICENSE_OPTIONS}}", options)
             self.send_response(200)
             self.send_header("Content-type", "text/html; charset=utf-8")
             self.end_headers()
@@ -154,17 +196,12 @@ class MyHandler(BaseHTTPRequestHandler):
                 if lic:
                     with open("templates/edit_license.html", "r", encoding="utf-8") as f:
                         html = f.read()
-
-                    options = ""
-                    for p in products:
-                        selected = "selected" if p[0] == lic[1] else ""
-                        options += f'<option value="{p[0]}" {selected}>{p[1]}</option>'
-
-                    html = html.replace("{{ID}}", str(lic[0]))
-                    html = html.replace("{{PRODUCT_OPTIONS}}", options)
-                    html = html.replace("{{DURATION}}", str(lic[3]))
+                    options = "".join(
+                        [f'<option value="{p[0]}" {"selected" if p[0] == lic[1] else ""}>{p[1]}</option>' for p in
+                         products])
+                    html = html.replace("{{ID}}", str(lic[0])).replace("{{PRODUCT_OPTIONS}}", options).replace(
+                        "{{DURATION}}", str(lic[3]))
                     html = html.replace(f'value="{lic[2]}"', f'value="{lic[2]}" selected')
-
                     self.send_response(200)
                     self.send_header("Content-type", "text/html; charset=utf-8")
                     self.end_headers()
@@ -196,30 +233,34 @@ class MyHandler(BaseHTTPRequestHandler):
 
         # POST: Добавление продукта
         elif self.path == "/add_product":
-            name = data.get("name", [""])[0]
-            ver = data.get("version", [""])[0]
-            price = data.get("price", [""])[0]
+            name, ver, price = data.get("name", [""])[0], data.get("version", [""])[0], data.get("price", [""])[0]
             if name and ver and price:
                 from models.product_model import add_product
                 add_product(name, ver, price)
             self.redirect("/products")
 
-        # POST: Выдача новой лицензии (Сохранение)
+        # POST: Выдача лицензии
         elif self.path == "/add_license":
-            prod_id = data.get("product_id", [""])[0]
-            l_type = data.get("license_type", [""])[0]
-            dur = data.get("duration_days", [""])[0]
+            prod_id, l_type, dur = data.get("product_id", [""])[0], data.get("license_type", [""])[0], \
+            data.get("duration_days", [""])[0]
             if prod_id and l_type and dur:
                 from models.license_model import add_license
                 add_license(prod_id, l_type, dur)
             self.redirect("/licenses")
 
+        # POST: Добавление ключа — ДОБАВЛЕНО
+        elif self.path == "/add_key":
+            lic_id = data.get("license_id", [""])[0]
+            key_code = data.get("license_key", [""])[0]
+            if lic_id and key_code:
+                from models.key_model import add_new_key
+                add_new_key(lic_id, key_code)
+            self.redirect("/keys")
+
         # POST: Изменение продукта
         elif self.path == "/edit_product":
-            p_id = data.get("product_id", [""])[0]
-            name = data.get("name", [""])[0]
-            ver = data.get("version", [""])[0]
-            price = data.get("price", [""])[0]
+            p_id, name, ver, price = data.get("product_id", [""])[0], data.get("name", [""])[0], \
+            data.get("version", [""])[0], data.get("price", [""])[0]
             if p_id and name and ver and price:
                 from models.product_model import update_product
                 update_product(p_id, name, ver, price)
@@ -227,10 +268,8 @@ class MyHandler(BaseHTTPRequestHandler):
 
         # POST: Изменение лицензии
         elif self.path == "/edit_license":
-            lic_id = data.get("license_id", [""])[0]
-            prod_id = data.get("product_id", [""])[0]
-            l_type = data.get("license_type", [""])[0]
-            dur = data.get("duration_days", [""])[0]
+            lic_id, prod_id, l_type, dur = data.get("license_id", [""])[0], data.get("product_id", [""])[0], \
+            data.get("license_type", [""])[0], data.get("duration_days", [""])[0]
             if lic_id and prod_id and l_type and dur:
                 from models.license_model import update_license
                 update_license(lic_id, prod_id, l_type, dur)
