@@ -144,11 +144,13 @@ def show_keys(handler):
 
     render_template(handler, "templates/keys.html", {"{{TABLE_ROWS}}": rows})
 
+
 def show_products(handler):
     """Управление ПО (Админ)"""
     products = get_all_products()
     rows = ""
     for p in products:
+        # p[0]-ID, p[1]-Название, p[2]-Версия, p[3]-Цена
         rows += f"""
         <tr>
             <td style="border:1px solid #adb5bd; padding:10px; text-align:center;">{p[0]}</td>
@@ -156,15 +158,22 @@ def show_products(handler):
             <td style="border:1px solid #adb5bd; padding:10px; text-align:right;">{p[3]} ₽</td>
             <td style="border:1px solid #adb5bd; padding:10px; text-align:center;">{p[2]}</td>
             <td style="border:1px solid #adb5bd; padding:10px; text-align:center;">
-                <a href="/delete_product?id={p[0]}" style="color:#dc3545; font-weight:bold; text-decoration:none;">[удалить]</a>
+                <a href="/edit_product?id={p[0]}" 
+                   style="color:#007bff; font-weight:bold; text-decoration:none; margin-right:10px;">[изменить]</a>
+
+                <a href="/delete_product?id={p[0]}" 
+                   style="color:#dc3545; font-weight:bold; text-decoration:none;" 
+                   onclick="return confirm('Вы уверены, что хотите удалить {p[1]}?')">[удалить]</a>
             </td>
         </tr>"""
     render_template(handler, "templates/products.html", {"{{TABLE_ROWS}}": rows})
+
 
 def show_licenses(handler):
     """Управление лицензиями (Админ)"""
 
     try:
+        from models.license_model import get_all_licenses
         licenses = get_all_licenses()
     except Exception as e:
         print("Ошибка получения лицензий:", e)
@@ -173,9 +182,10 @@ def show_licenses(handler):
     rows = ""
 
     if not licenses:
-        rows = "<tr><td colspan='5' style='text-align:center;'>Нет данных</td></tr>"
+        rows = "<tr><td colspan='5' style='text-align:center; padding:20px;'>Нет данных</td></tr>"
     else:
         for l in licenses:
+            # Предполагаем структуру: (ID, Product_Name, Type, Duration)
             license_id = l[0]
             product_name = l[1]
             license_type = l[2]
@@ -188,13 +198,22 @@ def show_licenses(handler):
                 <td style="border:1px solid #adb5bd; padding:10px; text-align:center;">{license_type}</td>
                 <td style="border:1px solid #adb5bd; padding:10px; text-align:center;">{duration} дн.</td>
                 <td style="border:1px solid #adb5bd; padding:10px; text-align:center;">
-                    <a href="/delete_license?id={license_id}" style="color:#dc3545; font-weight:bold;">
+                    <a href="/edit_license?id={license_id}" 
+                       style="color:#007bff; font-weight:bold; text-decoration:none; margin-right:10px;">
+                        [изменить]
+                    </a>
+
+                    <a href="/delete_license?id={license_id}" 
+                       style="color:#dc3545; font-weight:bold; text-decoration:none;"
+                       onclick="return confirm('Удалить этот тип лицензии?')">
                         [удалить]
                     </a>
                 </td>
             </tr>
             """
 
+    # Вызываем рендер шаблона
+    from routes.dashboard_routes import render_template
     render_template(handler, "templates/licenses.html", {
         "{{TABLE_ROWS}}": rows
     })

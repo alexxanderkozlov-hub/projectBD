@@ -9,20 +9,21 @@
     <div class="header"><h1>Выдача новой лицензии</h1></div>
     <div style="width: 450px; margin: 50px auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
         <form action="/add_license" method="POST">
+
             <label>Выберите продукт:</label><br>
-            <select name="product_id" style="width: 100%; padding: 10px; margin-bottom: 20px;" required>
+            <select name="product_id" style="width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px;" required>
                 {{PRODUCT_OPTIONS}}
             </select>
 
             <label>Тип лицензии:</label><br>
-            <select name="license_type" style="width: 100%; padding: 10px; margin-bottom: 20px;">
+            <select name="license_type" style="width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px;">
                 <option value="Базовая">Базовая</option>
                 <option value="Pro">Pro</option>
                 <option value="Trial">Trial</option>
             </select>
 
             <label>Срок действия (в днях):</label><br>
-            <input type="number" name="duration_days" value="30" min="1" style="width: 95%; padding: 10px; margin-bottom: 20px;" required>
+            <input type="number" name="duration_days" value="30" min="1" style="width: 100%; box-sizing: border-box; padding: 10px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px;" required>
 
             <button type="submit" style="background: #28a745; color: white; border: none; padding: 12px; width: 100%; cursor: pointer; font-weight: bold; border-radius: 4px;">
                 Подтвердить выдачу

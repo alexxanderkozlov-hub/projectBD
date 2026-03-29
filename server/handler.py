@@ -76,7 +76,7 @@ class MyHandler(BaseHTTPRequestHandler):
             return show_buy_page(self)
 
         # Обработка нажатия на кнопку "Купить" (если через GET)
-        elif path == "/buy":
+        elif path == "/purchase":
             lic_id = query.get("license_id", [None])[0]
             return self.handle_purchase_logic(lic_id)
 
@@ -110,6 +110,8 @@ class MyHandler(BaseHTTPRequestHandler):
                 delete_key_by_id(k_id)
             return self.redirect("/keys")
 
+            # 2. ИЗМЕНЕНИЕ СТАТУСОВ И РЕДАКТИРОВАНИЕ
+
         elif path == "/change_key_status":
             k_id = query.get("id", [None])[0]
             status = query.get("status", [None])[0]
@@ -117,6 +119,50 @@ class MyHandler(BaseHTTPRequestHandler):
                 from models.key_model import update_key_status
                 update_key_status(k_id, status)
             return self.redirect("/keys")
+
+
+        elif path == "/edit_product":
+            p_id = query.get("id", [None])[0]
+            if p_id:
+                from models.product_model import get_product_by_id
+                product = get_product_by_id(p_id)
+                if product:
+                    # Передаем данные в шаблон редактирования
+
+                    return self.render("templates/edit_product.html", {
+                        "{{ID}}": str(product[0]),
+                        "{{NAME}}": str(product[1]),
+                        "{{VERSION}}": str(product[2]),
+                        "{{PRICE}}": str(product[3])
+                    })
+            return self.redirect("/products")
+
+            # ===== РЕДАКТИРОВАНИЕ ЛИЦЕНЗИИ (GET) =====
+        elif path == "/edit_license":
+            l_id = query.get("id", [None])[0]
+            if l_id:
+                from models.license_model import get_license_by_id
+                from models.product_model import get_all_products
+
+                lic = get_license_by_id(l_id)  # Получаем: (id, prod_id, type, duration)
+                products = get_all_products()
+
+                if lic:
+                    # 1. Генерируем опции для списка продуктов
+                    options = ""
+                    current_prod_id = lic[1]
+                    for p in products:
+                        # Сравниваем ID как строки для надежности
+                        selected = "selected" if str(p[0]) == str(current_prod_id) else ""
+                        options += f'<option value="{p[0]}" {selected}>{p[1]} (v.{p[2]})</option>'
+
+                    # 2. Рендерим шаблон с правильными ключами из твоего HTML
+                    return self.render("templates/edit_license.html", {
+                        "{{ID}}": str(lic[0]),
+                        "{{PRODUCT_OPTIONS}}": options,  # Должно совпадать с HTML!
+                        "{{DURATION}}": str(lic[3])  # Должно совпадать с HTML!
+                    })
+            return self.redirect("/licenses")
 
         # ===== ДОБАВЛЕНИЕ (Страницы) =====
         elif path == "/add_product":
@@ -164,18 +210,15 @@ class MyHandler(BaseHTTPRequestHandler):
             from routes.auth_routes import login
             return login(self, data)
 
-
-
         elif path == "/verify":
             from routes.auth_routes import verify
             return verify(self, data)
+
         # --- 2. ВСЕ ОСТАЛЬНЫЕ ДЕЙСТВИЯ (ТРЕБУЮТ АВТОРИЗАЦИИ И ПРОЙДЕННОГО 2FA) ---
         session = self.get_session()
         if not session or not session.get("2fa"):
             print(f"[POST] Доступ запрещен: сессия не авторизована для {path}")
             return self.redirect("/")
-
-        # Далее пойдут твои остальные роуты (buy, add_product и т.д.)
 
         # ЛОГИКА ПОКУПКИ (для обычного юзера)
         if path == "/buy":
@@ -195,6 +238,18 @@ class MyHandler(BaseHTTPRequestHandler):
                 add_product(name, version, price)
             self.redirect("/products")
 
+        elif path == "/edit_product":
+            p_id = data.get("product_id", [""])[0]
+            name = data.get("name", [""])[0]
+            version = data.get("version", [""])[0]
+            price = data.get("price", [""])[0]
+
+            if p_id and name and version and price:
+                from models.product_model import update_product
+                update_product(p_id, name, version, price)
+
+            return self.redirect("/products")
+
         # ДОБАВЛЕНИЕ НОВОЙ ЛИЦЕНЗИИ (Admin Only)
         elif path == "/add_license":
             prod_id = data.get("product_id", [""])[0]
@@ -204,6 +259,19 @@ class MyHandler(BaseHTTPRequestHandler):
                 from models.license_model import add_license
                 add_license(prod_id, l_type, dur)
             self.redirect("/licenses")
+
+            # СОХРАНЕНИЕ ИЗМЕНЕНИЙ ЛИЦЕНЗИИ (POST)
+        elif path == "/edit_license":
+            l_id = data.get("license_id", [""])[0]
+            p_id = data.get("product_id", [""])[0]
+            l_type = data.get("license_type", [""])[0]
+            days = data.get("duration_days", [""])[0]
+
+            if l_id and p_id and l_type and days:
+                from models.license_model import update_license
+                update_license(l_id, p_id, l_type, days)
+
+            return self.redirect("/licenses")
 
         # ДОБАВЛЕНИЕ КЛЮЧА ВРУЧНУЮ (Admin Only)
         elif path == "/add_key":
