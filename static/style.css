@@ -6,36 +6,42 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    /* Стандартные шрифты, которые есть везде */
     font-family: Arial, Helvetica, sans-serif;
     background-color: #e9ecef;
 }
 
-/* 2. Шапка - простая, с четкой рамкой */
+/* 2. Шапка - с той самой серой линией */
 .header {
     width: 100%;
-    background: #343a40; /* Темно-серый «админский» цвет */
+    background: #343a40;
     color: white;
     padding: 20px 0;
     text-align: center;
-    border-bottom: 2px solid #212529;
+    border-bottom: 2px solid #212529; /* Серая линия */
     margin-bottom: 30px;
 }
 
 .header h1 {
     margin: 0;
     font-size: 24px;
-    text-transform: uppercase; /* Строгий стиль */
+    text-transform: uppercase;
 }
 
-/* 3. Контейнер для авторизации (Box) */
+/* 3. Контейнеры (Box) */
 .box {
     background: white;
     padding: 25px;
-    border: 2px solid #dee2e6; /* Вместо тени — обычная рамка */
-    border-radius: 4px; /* Почти острые углы */
-    width: 300px;
+    border: 2px solid #dee2e6;
+    border-radius: 4px;
+    width: 300px; /* По умолчанию для логина */
     text-align: center;
+    box-sizing: border-box;
+}
+
+/* Расширенный бокс для таблиц (чтобы история покупок была шире) */
+.box-large {
+    width: 90%;
+    max-width: 1000px;
 }
 
 /* 4. Поля ввода и кнопки */
@@ -56,7 +62,7 @@ input:focus {
 button {
     width: 100%;
     padding: 10px;
-    background: #007bff; /* Классический синий цвет кнопки */
+    background: #007bff;
     color: white;
     border: 1px solid #0069d9;
     border-radius: 4px;
@@ -77,10 +83,10 @@ button:hover {
     padding: 10px;
 }
 
-/* 6. Кнопки-карточки - теперь более грубые */
+/* 6. Кнопки-карточки */
 .nav-card {
     background: #ffffff;
-    border: 2px solid #adb5bd; /* Четкая серая рамка */
+    border: 2px solid #adb5bd;
     border-radius: 4px;
     padding: 30px 10px;
     cursor: pointer;
@@ -91,7 +97,6 @@ button:hover {
     flex-direction: column;
     align-items: center;
     text-decoration: none;
-    /* Убрали трансформацию (выпрыгивание) и тени */
 }
 
 .nav-card:hover {
@@ -100,7 +105,32 @@ button:hover {
     color: #212529;
 }
 
-/* 7. Кнопка выхода - простая красная рамка */
+/* 7. ТАБЛИЦЫ (Добавлено для Истории покупок) */
+table {
+    width: 100%;
+    border-collapse: collapse; /* Чтобы границы не двоились */
+    margin-top: 15px;
+    background: white;
+}
+
+table th, table td {
+    border: 1px solid #dee2e6; /* Четкие границы ячеек */
+    padding: 12px;
+    text-align: center;
+}
+
+table th {
+    background-color: #f8f9fa;
+    color: #495057;
+    text-transform: uppercase;
+    font-size: 13px;
+}
+
+table tr:hover {
+    background-color: #f1f3f5; /* Подсветка строки при наведении */
+}
+
+/* 8. Кнопка выхода */
 .logout-card {
     grid-column: span 2;
     background: #f8d7da;
@@ -115,7 +145,6 @@ button:hover {
     border-color: #bd2130;
 }
 
-/* Дополнительные мелочи */
 .hint {
     font-size: 11px;
     color: #6c757d;

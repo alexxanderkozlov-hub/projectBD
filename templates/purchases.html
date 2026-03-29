@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>История покупок</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div class="header">
+        <h1>История покупок</h1>
+    </div>
+
+    <div class="box" style="width: 85%; max-width: 1000px; margin-top: 20px; padding: 25px;">
+
+        <table style="width: 100%; border-collapse: collapse; background-color: white; border: 1px solid #dee2e6;">
+            <thead>
+                <tr style="background-color: #f8f9fa;">
+                    <th style="border: 1px solid #dee2e6; padding: 15px; font-size: 14px; text-transform: uppercase; color: #495057;">ID Покупки</th>
+                    <th style="border: 1px solid #dee2e6; padding: 15px; font-size: 14px; text-transform: uppercase; color: #495057;">User ID</th>
+                    <th style="border: 1px solid #dee2e6; padding: 15px; font-size: 14px; text-transform: uppercase; color: #495057;">Дата и время</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{PURCHASE_ROWS}}
+            </tbody>
+        </table>
+
+        <div style="margin-top: 25px; text-align: center;">
+            <a href="/dashboard" style="text-decoration: none; color: #007bff; font-weight: bold; font-size: 14px;">
+                ← Вернуться в панель управления
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>
