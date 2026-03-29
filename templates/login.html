@@ -1,24 +1,26 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
+    <meta charset="UTF-8">
+    <title>Вход</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
 <div class="box">
-    <h2>Login</h2>
+    <h2>Вход в систему</h2>
 
     <form method="POST" action="/login">
-        <input name="login" placeholder="Enter login" required>
-        <input name="password" type="password" placeholder="Enter password" required>
-        <button type="submit">Login</button>
+        <input name="login" placeholder="Введите логин" required>
+        <input name="password" type="password" placeholder="Введите пароль" required>
+        <button type="submit">Войти</button>
     </form>
 
     <div class="hint">
-        🔹 login: admin<br>
-        🔹 password: admin123<br>
-        🔹 login: user<br>
-        🔹 password: user123<br>
+        🔹 логин: admin<br>
+        🔹 пароль: admin123<br>
+        🔹 логин: user<br>
+        🔹 пароль: user123<br>
     </div>
 </div>
 

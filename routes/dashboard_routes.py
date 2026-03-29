@@ -81,24 +81,28 @@ def show_buy_page(handler):
             shop_rows = "<tr><td colspan='4' style='padding:20px; text-align:center;'>Товары временно отсутствуют</td></tr>"
         else:
             for item in available_items:
-                # item[0]=Название продукта, item[1]=Тип лицензии, item[2]=Дни, item[3]=ID лицензии
-                product_name = item[0]
-                license_name = item[1]
-                duration = item[2]
-                lic_id = item[3]
+                license_id = item[0]
+                product_name = item[1]
+                license_type = item[2]
+                duration = item[3]
+                price = item[4]
 
                 shop_rows += f"""
                 <tr>
                     <td style="border-bottom:1px solid #eee; padding:15px;">{product_name}</td>
-                    <td style="border-bottom:1px solid #eee; padding:15px;">{license_name}</td>
+                    <td style="border-bottom:1px solid #eee; padding:15px;">{license_type}</td>
                     <td style="border-bottom:1px solid #eee; padding:15px;">{duration} дней</td>
                     <td style="border-bottom:1px solid #eee; padding:15px; text-align:right;">
-                        <a href="/buy?license_id={lic_id}" 
+                        {price} ₽
+                    </td>
+                    <td style="border-bottom:1px solid #eee; padding:15px; text-align:right;">
+                        <a href="/buy?license_id={license_id}" 
                            style="background:#28a745; color:white; padding:8px 15px; border-radius:4px; text-decoration:none; font-weight:bold; font-size:13px;">
                            Купить
                         </a>
                     </td>
-                </tr>"""
+                </tr>
+                """
 
         render_template(handler, "templates/user_shop.html", {
             "{{SHOP_ROWS}}": shop_rows
@@ -158,21 +162,42 @@ def show_products(handler):
     render_template(handler, "templates/products.html", {"{{TABLE_ROWS}}": rows})
 
 def show_licenses(handler):
-    """Управление типами лицензий (Админ)"""
-    licenses = get_all_licenses()
+    """Управление лицензиями (Админ)"""
+
+    try:
+        licenses = get_all_licenses()
+    except Exception as e:
+        print("Ошибка получения лицензий:", e)
+        licenses = []
+
     rows = ""
-    for l in licenses:
-        rows += f"""
-        <tr>
-            <td style="border:1px solid #adb5bd; padding:10px; text-align:center;">{l[0]}</td>
-            <td style="border:1px solid #adb5bd; padding:10px;">{l[1]}</td>
-            <td style="border:1px solid #adb5bd; padding:10px; text-align:center;">{l[2]}</td>
-            <td style="border:1px solid #adb5bd; padding:10px; text-align:center;">{l[3]} дн.</td>
-            <td style="border:1px solid #adb5bd; padding:10px; text-align:center;">
-                <a href="/delete_license?id={l[0]}" style="color:#dc3545; font-weight:bold; text-decoration:none;">[удалить]</a>
-            </td>
-        </tr>"""
-    render_template(handler, "templates/licenses.html", {"{{TABLE_ROWS}}": rows})
+
+    if not licenses:
+        rows = "<tr><td colspan='5' style='text-align:center;'>Нет данных</td></tr>"
+    else:
+        for l in licenses:
+            license_id = l[0]
+            product_name = l[1]
+            license_type = l[2]
+            duration = l[3]
+
+            rows += f"""
+            <tr>
+                <td style="border:1px solid #adb5bd; padding:10px; text-align:center;">{license_id}</td>
+                <td style="border:1px solid #adb5bd; padding:10px;">{product_name}</td>
+                <td style="border:1px solid #adb5bd; padding:10px; text-align:center;">{license_type}</td>
+                <td style="border:1px solid #adb5bd; padding:10px; text-align:center;">{duration} дн.</td>
+                <td style="border:1px solid #adb5bd; padding:10px; text-align:center;">
+                    <a href="/delete_license?id={license_id}" style="color:#dc3545; font-weight:bold;">
+                        [удалить]
+                    </a>
+                </td>
+            </tr>
+            """
+
+    render_template(handler, "templates/licenses.html", {
+        "{{TABLE_ROWS}}": rows
+    })
 
 def render_template(handler, template_path, replacements):
     """Универсальный загрузчик HTML шаблонов"""
