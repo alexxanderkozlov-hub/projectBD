@@ -42,10 +42,11 @@ def show_buy_page(handler):
             pur_rows = "<tr><td colspan='5' style='border:1px solid #dee2e6; padding:15px; text-align:center;'>Транзакции не найдены</td></tr>"
         else:
             for p in all_purchases:
-                pid = p.get('id')
-                u_id = p.get('user_id')
-                l_id = p.get('license_id')
-                pdate = p.get('date')
+                # Проверяем, как приходят данные (словари или кортежи)
+                if isinstance(p, dict):
+                    pid, u_id, l_id, pdate = p.get('id'), p.get('user_id'), p.get('license_id'), p.get('date')
+                else:
+                    pid, u_id, l_id, pdate = p[0], p[1], p[2], p[3]
 
                 pur_rows += f"""
                 <tr>
@@ -69,44 +70,104 @@ def show_buy_page(handler):
     # === ЛОГИКА ДЛЯ ОБЫЧНОГО ПОЛЬЗОВАТЕЛЯ (Магазин с данными из БД) ===
     else:
         try:
-            # Используем новую функцию, которая делает JOIN таблиц
             from models.license_model import get_licenses_with_products
             available_items = get_licenses_with_products()
         except Exception as e:
             print(f"Ошибка загрузки товаров из БД: {e}")
             available_items = []
 
-        shop_rows = ""
-        if not available_items:
-            shop_rows = "<tr><td colspan='4' style='padding:20px; text-align:center;'>Товары временно отсутствуют</td></tr>"
-        else:
-            for item in available_items:
-                license_id = item[0]
-                product_name = item[1]
-                license_type = item[2]
-                duration = item[3]
-                price = item[4]
+def show_buy_page(handler):
+            """ГЛАВНЫЙ ЭКРАН: Разделение на Админ-лог (purchases.html) и Магазин (user_shop.html)"""
+            user = handler.get_user()
+            if not user:
+                handler.redirect("/")
+                return
 
-                shop_rows += f"""
-                <tr>
-                    <td style="border-bottom:1px solid #eee; padding:15px;">{product_name}</td>
-                    <td style="border-bottom:1px solid #eee; padding:15px;">{license_type}</td>
-                    <td style="border-bottom:1px solid #eee; padding:15px;">{duration} дней</td>
-                    <td style="border-bottom:1px solid #eee; padding:15px; text-align:right;">
-                        {price} ₽
-                    </td>
-                    <td style="border-bottom:1px solid #eee; padding:15px; text-align:right;">
-                        <a href="/buy?license_id={license_id}" 
-                           style="background:#28a745; color:white; padding:8px 15px; border-radius:4px; text-decoration:none; font-weight:bold; font-size:13px;">
-                           Купить
-                        </a>
-                    </td>
-                </tr>
-                """
+            # Определяем данные текущего пользователя
+            current_user_id = user.get("id") if isinstance(user, dict) else user[0]
+            current_user_login = user.get("login") if isinstance(user, dict) else user[1]
 
-        render_template(handler, "templates/user_shop.html", {
-            "{{SHOP_ROWS}}": shop_rows
-        })
+            # === ЛОГИКА ДЛЯ АДМИНА (Просмотр транзакций) ===
+            if current_user_login == "admin":
+                try:
+                    from models.purchase_model import get_all_purchases
+                    all_purchases = get_all_purchases()
+                except Exception as e:
+                    print(f"Ошибка загрузки транзакций: {e}")
+                    all_purchases = []
+
+                pur_rows = ""
+                if not all_purchases:
+                    pur_rows = "<tr><td colspan='5' class='text-center'>Транзакции не найдены</td></tr>"
+                else:
+                    for p in all_purchases:
+                        # p[0]-ID покупки, p[1]-User ID, p[2]-Lic ID, p[3]-Дата
+                        # Если в get_all_purchases используется JOIN, индексы могут быть другими
+                        pid = p.get('id') or p.get('purchase_id')
+                        uid = p.get('user_id')
+                        lid = p.get('license_id')
+                        pdate = p.get('date') or p.get('purchase_date')
+
+                        pur_rows += f"""
+                        <tr>
+                            <td class="text-center">{pid}</td>
+                            <td class="text-center">User #{uid}</td>
+                            <td class="text-center">Пакет #{lid}</td>
+                            <td class="text-center">{pdate}</td>
+                            <td class="text-center">
+                                <a href="/delete_purchase?id={pid}" 
+                                   style="color: #dc3545; text-decoration: none; font-weight: bold;"
+                                   onclick="return confirm('Удалить запись о покупке?');">
+                                   [удалить]
+                                </a>
+                            </td>
+                        </tr>"""
+
+                render_template(handler, "templates/purchases.html", {
+                    "{{PURCHASE_ROWS}}": pur_rows
+                })
+
+            # === ЛОГИКА ДЛЯ ПОЛЬЗОВАТЕЛЯ (Магазин) ===
+            else:
+                try:
+                    from models.license_model import get_licenses_with_products
+                    available_items = get_licenses_with_products()
+                except Exception as e:
+                    print(f"Ошибка загрузки магазина: {e}")
+                    available_items = []
+
+                shop_rows = ""
+                if not available_items:
+                    shop_rows = "<tr><td colspan='6' class='text-center'>Товары временно отсутствуют</td></tr>"
+                else:
+                    for item in available_items:
+                        # Структура: (license_id, product_name, license_type, duration, price)
+                        lic_id = item[0]
+                        name = item[1]
+                        l_type = item[2]
+                        days = item[3]
+                        price = item[4]
+
+                        shop_rows += f"""
+                        <tr>
+                            <td class="text-center">{lic_id}</td>
+                            <td><strong>{name}</strong></td>
+                            <td>{l_type}</td>
+                            <td class="text-center">{days} дней</td>
+                            <td class="text-center">{price} ₽</td>
+                            <td class="text-center">
+                                <form action="/buy" method="POST" class="buy-form" style="margin:0;">
+                                    <input type="hidden" name="license_id" value="{lic_id}">
+                                    <button type="submit" class="btn-buy">Купить</button>
+                                </form>
+                            </td>
+                        </tr>
+                        """
+
+                # Используем твой новый шаблон user_shop.html
+                render_template(handler, "templates/user_shop.html", {
+                    "{{TABLE_ROWS}}": shop_rows
+                })
 
 def show_keys(handler):
     """Управление ключами (Админ)"""

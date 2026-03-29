@@ -53,7 +53,7 @@
             text-align: center !important;
         }
 
-        /* Обновленная кнопка Купить (теперь это <button>) */
+        /* Обновленная кнопка Купить */
         .btn-buy {
             background: #28a745;
             color: white;
@@ -87,7 +87,9 @@
 
 <div class="box box-large" style="width: 90%; max-width: 1000px; margin: 20px auto; padding: 25px; background: #fff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
 
-    <h2 style="margin-top: 0;">Доступные предложения</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">Доступные предложения</h2>
+    </div>
 
     <table class="shop-table">
         <thead>
@@ -102,45 +104,7 @@
         </thead>
 
         <tbody>
-            <tr>
-                <td class="text-center">1</td>
-                <td><strong>PhotoEditorPro</strong></td>
-                <td>Premium</td>
-                <td class="text-center">365 дней</td>
-                <td class="text-center">500.00 ₽</td>
-                <td class="text-center">
-                    <form action="/buy" method="POST" class="buy-form">
-                        <input type="hidden" name="item_id" value="1">
-                        <button type="submit" class="btn-buy">Купить</button>
-                    </form>
-                </td>
-            </tr>
-            <tr>
-                <td class="text-center">2</td>
-                <td><strong>Antivirus</strong></td>
-                <td>Trial</td>
-                <td class="text-center">30 дней</td>
-                <td class="text-center">300.00 ₽</td>
-                <td class="text-center">
-                    <form action="/buy" method="POST" class="buy-form">
-                        <input type="hidden" name="item_id" value="2">
-                        <button type="submit" class="btn-buy">Купить</button>
-                    </form>
-                </td>
-            </tr>
-            <tr>
-                <td class="text-center">3</td>
-                <td><strong>VPN Extra</strong></td>
-                <td>Базовая</td>
-                <td class="text-center">90 дней</td>
-                <td class="text-center">150.00 ₽</td>
-                <td class="text-center">
-                    <form action="/buy" method="POST" class="buy-form">
-                        <input type="hidden" name="item_id" value="3">
-                        <button type="submit" class="btn-buy">Купить</button>
-                    </form>
-                </td>
-            </tr>
+            {{TABLE_ROWS}}
         </tbody>
     </table>
 
