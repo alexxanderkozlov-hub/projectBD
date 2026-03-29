@@ -30,10 +30,13 @@ def get_all_licenses():
 # GET LICENSES (SHOP / USER)
 # =========================
 def get_licenses_with_products():
+    """Получает список всех лицензий с привязанными к ним продуктами,
+    отсортированный по возрастанию ID"""
     conn = get_db()
     cur = conn.cursor()
 
     try:
+        # Добавлена сортировка ORDER BY по ID лицензии (ASC - по возрастанию)
         cur.execute("""
             SELECT 
                 l.license_id,
@@ -43,6 +46,7 @@ def get_licenses_with_products():
                 p.price
             FROM licenses l
             JOIN products p ON l.product_id = p.product_id
+            ORDER BY l.license_id ASC
         """)
 
         return cur.fetchall()

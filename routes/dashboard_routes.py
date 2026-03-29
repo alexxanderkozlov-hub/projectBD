@@ -140,29 +140,32 @@ def show_buy_page(handler):
                 if not available_items:
                     shop_rows = "<tr><td colspan='6' class='text-center'>Товары временно отсутствуют</td></tr>"
                 else:
-                    for item in available_items:
-                        # Структура: (license_id, product_name, license_type, duration, price)
-                        lic_id = item[0]
+                    # Используем enumerate, где 'i' — это порядковый номер (начиная с 1)
+                    # а 'item' — это данные из твоей базы данных
+                    for i, item in enumerate(available_items, 1):
+                        # Структура из БД: (license_id, product_name, license_type, duration, price)
+                        real_db_id = item[0]  # Настоящий ID лицензии (например, 15 или 42)
                         name = item[1]
                         l_type = item[2]
                         days = item[3]
                         price = item[4]
 
                         shop_rows += f"""
-                        <tr>
-                            <td class="text-center">{lic_id}</td>
-                            <td><strong>{name}</strong></td>
-                            <td>{l_type}</td>
-                            <td class="text-center">{days} дней</td>
-                            <td class="text-center">{price} ₽</td>
-                            <td class="text-center">
-                                <form action="/buy" method="POST" class="buy-form" style="margin:0;">
-                                    <input type="hidden" name="license_id" value="{lic_id}">
-                                    <button type="submit" class="btn-buy">Купить</button>
-                                </form>
-                            </td>
-                        </tr>
-                        """
+                                <tr>
+                                    <td class="text-center">{i}</td>
+
+                                    <td><strong>{name}</strong></td>
+                                    <td>{l_type}</td>
+                                    <td class="text-center">{days} дней</td>
+                                    <td class="text-center">{price} ₽</td>
+                                    <td class="text-center">
+                                        <form action="/buy" method="POST" class="buy-form" style="margin:0;">
+                                            <input type="hidden" name="license_id" value="{real_db_id}">
+                                            <button type="submit" class="btn-buy">Купить</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                """
 
                 # Используем твой новый шаблон user_shop.html
                 render_template(handler, "templates/user_shop.html", {
