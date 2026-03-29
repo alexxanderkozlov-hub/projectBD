@@ -1,31 +1,50 @@
 from db.database import get_db
 
+
 def get_user_by_login(login):
-    """Ищет пользователя в БД и возвращает словарь с данными"""
+    """
+    Ищет пользователя в БД по логину (без учета регистра).
+    Возвращает словарь с данными для авторизации.
+    """
     conn = get_db()
+    if not conn:
+        print("[ОШИБКА БД] Не удалось установить соединение с базой данных.")
+        return None
+
     cur = conn.cursor()
 
-    # Используем %s для PostgreSQL
-    cur.execute(
-        "SELECT id, login, password, role FROM users WHERE login = %s",
-        (login,)
-    )
+    try:
+        # Приводим и логин в базе, и вводимый логин к нижнему регистру (LOWER)
+        # Это исключит ошибки, если в базе 'user', а ты ввел 'User'
+        cur.execute("""
+                    SELECT u.user_id, u.login, u.password_hash, r.role_name
+                    FROM users u
+                             JOIN roles r ON u.role_id = r.role_id
+                    WHERE LOWER(u.login) = LOWER(%s)
+                    """, (login.strip(),))
 
-    row = cur.fetchone()
+        row = cur.fetchone()
 
-    cur.close()
-    conn.close()
+        if row:
+            user_dict = {
+                "id": row[0],  # user_id
+                "login": row[1],  # оригинальный login из базы
+                "password": row[2],  # password_hash (bcrypt)
+                "role": row[3]  # 'Администратор' или 'Покупатель'
+            }
+            print(f"[БД] Пользователь '{login}' найден. Роль: {user_dict['role']}")
+            return user_dict
 
-    # Если пользователь найден, собираем словарь
-    if row:
-        return {
-            "id": row[0],
-            "login": row[1],
-            "password": row[2],
-            "role": row[3]
-        }
+        print(f"[БД] Пользователь '{login}' НЕ найден в таблице users.")
+        return None
 
-    return None
+    except Exception as e:
+        print(f"[ОШИБКА БД] Критическая ошибка при поиске: {e}")
+        return None
+    finally:
+        cur.close()
+        conn.close()
 
-# Делаем копию функции под старым именем, чтобы app.py не выдавал ImportError
+
+# Копия для совместимости с app.py и другими роутами
 find_user_by_login = get_user_by_login

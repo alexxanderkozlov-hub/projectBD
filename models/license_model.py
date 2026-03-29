@@ -1,24 +1,33 @@
 from db.database import get_db
 
 def get_all_licenses():
-    """Получает список лицензий с названиями продуктов через JOIN"""
+    """
+    Получает список лицензий с названиями продуктов через JOIN.
+    ВАЖНО: Порядок колонок в SELECT соответствует ожиданиям в dashboard_routes.
+    """
     conn = get_db()
     cur = conn.cursor()
-    # Используем INNER JOIN, чтобы соединить лицензию с продуктом
+    # Соединяем лицензии (l) и продукты (p)
+    # Порядок: Название продукта, Тип лицензии, Дни, ID лицензии
     query = """
-        SELECT l.license_id, p.name, l.license_type, l.duration_days 
+        SELECT p.name, l.license_type, l.duration_days, l.license_id 
         FROM licenses l
         JOIN products p ON l.product_id = p.product_id
         ORDER BY l.license_id
     """
-    cur.execute(query)
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return rows
+    try:
+        cur.execute(query)
+        rows = cur.fetchall()
+        return rows
+    except Exception as e:
+        print(f"Ошибка получения списка лицензий: {e}")
+        return []
+    finally:
+        cur.close()
+        conn.close()
 
 def add_license(product_id, license_type, duration_days):
-    """Добавляет новую лицензию"""
+    """Добавляет новую лицензию в БД"""
     conn = get_db()
     cur = conn.cursor()
     try:
@@ -37,18 +46,25 @@ def add_license(product_id, license_type, duration_days):
         conn.close()
 
 def get_license_by_id(lic_id):
-    """Находит одну лицензию для редактирования"""
+    """Находит одну лицензию по ID"""
     conn = get_db()
     cur = conn.cursor()
-    # Нам нужен product_id для выпадающего списка в форме
-    cur.execute("SELECT license_id, product_id, license_type, duration_days FROM licenses WHERE license_id = %s", (lic_id,))
-    lic = cur.fetchone()
-    cur.close()
-    conn.close()
-    return lic
+    try:
+        cur.execute(
+            "SELECT license_id, product_id, license_type, duration_days FROM licenses WHERE license_id = %s",
+            (lic_id,)
+        )
+        lic = cur.fetchone()
+        return lic
+    except Exception as e:
+        print(f"Ошибка поиска лицензии: {e}")
+        return None
+    finally:
+        cur.close()
+        conn.close()
 
 def update_license(lic_id, product_id, lic_type, duration):
-    """Обновляет данные лицензии"""
+    """Обновляет данные существующей лицензии"""
     conn = get_db()
     cur = conn.cursor()
     try:
@@ -67,7 +83,7 @@ def update_license(lic_id, product_id, lic_type, duration):
         conn.close()
 
 def delete_license_by_id(lic_id):
-    """Удаляет лицензию"""
+    """Удаляет лицензию по ID"""
     conn = get_db()
     cur = conn.cursor()
     try:
@@ -81,3 +97,10 @@ def delete_license_by_id(lic_id):
     finally:
         cur.close()
         conn.close()
+
+def get_licenses_with_products():
+    """
+    Дублирующая функция для явного вызова JOIN-данных,
+    если в dashboard_routes используется именно это имя.
+    """
+    return get_all_licenses()

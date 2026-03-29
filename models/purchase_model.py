@@ -10,30 +10,30 @@ def generate_key_code():
 def make_purchase(user_id, license_id):
     """Оформляет покупку и генерирует ключ в одной транзакции"""
     conn = get_db()
+    if not conn:
+        return False
+
     cur = conn.cursor()
     try:
-        # 1. Фиксируем покупку в таблице purchases
-        # Используем твой столбец user_id
+        # 1. Фиксируем покупку (только ID юзера и ID лицензии)
         cur.execute(
-            "INSERT INTO purchases (user_id) VALUES (%s)",
-            (user_id,)
+            "INSERT INTO purchases (user_id, license_id) VALUES (%s, %s) RETURNING purchase_id",
+            (user_id, license_id)
         )
 
-        # 2. Генерируем новый код ключа
+        # 2. Генерируем ключ
         new_key_code = generate_key_code()
 
         # 3. Добавляем ключ в таблицу license_keys
-        # ВАЖНО: Убедись, что в license_keys столбцы называются именно так
         cur.execute(
-            "INSERT INTO license_keys (license_id, license_key, status) VALUES (%s, %s, 'Активен')",
-            (license_id, new_key_code)
+            "INSERT INTO license_keys (license_id, license_key, status) VALUES (%s, %s, %s)",
+            (license_id, new_key_code, 'Активен')
         )
 
         conn.commit()
-        print(f"Успешная покупка: User {user_id} купил License {license_id}")
         return True
     except Exception as e:
-        print(f"Ошибка транзакции покупки: {e}")
+        print(f"[DB ERROR] Ошибка транзакции покупки: {e}")
         conn.rollback()
         return False
     finally:
@@ -41,20 +41,54 @@ def make_purchase(user_id, license_id):
         conn.close()
 
 def get_all_purchases():
-    """Получает список всех покупок для отображения в истории"""
+    """Получает сырые данные о покупках (ID вместо имен)"""
     conn = get_db()
+    if not conn:
+        return []
+
     cur = conn.cursor()
     try:
-        # ИСПРАВЛЕНО: используем purchase_id и purchase_date согласно твоему CREATE TABLE
+        # Убрали JOIN. Теперь берем только колонки из таблицы purchases
         cur.execute("""
-            SELECT purchase_id, user_id, purchase_date 
+            SELECT purchase_id, user_id, license_id, purchase_date 
             FROM purchases 
             ORDER BY purchase_date DESC
         """)
-        return cur.fetchall()
+
+        rows = cur.fetchall()
+
+        # Собираем список словарей, используя только ID
+        purchases = []
+        for row in rows:
+            purchases.append({
+                "id": row[0],          # ID покупки
+                "user_id": row[1],     # ID пользователя (например, 2)
+                "license_id": row[2],  # ID лицензии (например, 1)
+                "date": row[3].strftime("%Y-%m-%d %H:%M:%S") if row[3] else "Нет даты"
+            })
+        return purchases
+
     except Exception as e:
-        print(f"Ошибка получения покупок из БД: {e}")
+        print(f"[DB ERROR] Ошибка получения истории покупок: {e}")
         return []
+    finally:
+        cur.close()
+        conn.close()
+
+def delete_purchase(purchase_id):
+    """Удаляет запись о покупке по её ID"""
+    conn = get_db()
+    if not conn:
+        return False
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM purchases WHERE purchase_id = %s", (purchase_id,))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Ошибка при удалении покупки: {e}")
+        conn.rollback()
+        return False
     finally:
         cur.close()
         conn.close()

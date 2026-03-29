@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Магазин лицензий</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Стиль для кнопки выхода */
+        .logout-btn {
+            display: inline-block;
+            margin-top: 30px;
+            color: #dc3545; /* Красный цвет */
+            text-decoration: none;
+            font-weight: 600;
+            padding: 10px 20px;
+            border: 1px solid #dc3545;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .logout-btn:hover {
+            background-color: #dc3545;
+            color: #ffffff;
+            box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
+        }
+
+        /* Дополнительный стиль для таблицы, чтобы она выглядела аккуратнее */
+        .shop-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .shop-table th {
+            padding: 15px;
+            border-bottom: 2px solid #dee2e6;
+            background-color: #f8f9fa;
+            text-align: left;
+            color: #495057;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🛒 Магазин лицензий</h1>
+    </div>
+
+    <div class="box box-large" style="width: 85%; max-width: 900px; margin: 20px auto; padding: 25px;">
+        <h2 style="margin-top: 0; color: #333; font-size: 18px; text-transform: uppercase;">
+            Доступные предложения
+        </h2>
+
+        <table class="shop-table">
+            <thead>
+                <tr>
+                    <th>Товар</th>
+                    <th>Название лицензии</th>
+                    <th>Срок действия</th>
+                    <th style="text-align: right;">Действие</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{SHOP_ROWS}}
+            </tbody>
+        </table>
+
+        <div style="margin-top: 30px;">
+            <a href="/logout" class="logout-btn">
+                Выйти из аккаунта
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>

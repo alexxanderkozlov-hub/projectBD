@@ -3,23 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>История покупок</title>
+    <title>История транзакций</title>
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .raw-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .raw-table th {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            font-size: 13px;
+            text-transform: uppercase;
+            color: #495057;
+            text-align: center;
+        }
+        .raw-table td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            text-align: center;
+            font-size: 14px;
+            color: #333;
+        }
+        .back-link {
+            display: inline-block;
+            color: #007bff;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            margin-top: 20px;
+            transition: 0.2s;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+            color: #0056b3;
+        }
+        /* Стиль для кнопки удаления */
+        .delete-link {
+            color: #dc3545;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        .delete-link:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>История покупок</h1>
+        <h1>Админ-панель: Транзакции</h1>
     </div>
 
-    <div class="box" style="width: 85%; max-width: 1000px; margin-top: 20px; padding: 25px;">
+    <div class="box box-large" style="width: 90%; max-width: 1100px; margin: 20px auto; padding: 25px;">
 
-        <table style="width: 100%; border-collapse: collapse; background-color: white; border: 1px solid #dee2e6;">
+        <table class="raw-table">
             <thead>
-                <tr style="background-color: #f8f9fa;">
-                    <th style="border: 1px solid #dee2e6; padding: 15px; font-size: 14px; text-transform: uppercase; color: #495057;">ID Покупки</th>
-                    <th style="border: 1px solid #dee2e6; padding: 15px; font-size: 14px; text-transform: uppercase; color: #495057;">User ID</th>
-                    <th style="border: 1px solid #dee2e6; padding: 15px; font-size: 14px; text-transform: uppercase; color: #495057;">Дата и время</th>
+                <tr>
+                    <th>ID Покупки</th>
+                    <th>ID Пользователя</th>
+                    <th>ID Лицензии</th>
+                    <th>Дата транзакции</th>
+                    <th>Действие</th>
                 </tr>
             </thead>
             <tbody>
@@ -27,11 +76,10 @@
             </tbody>
         </table>
 
-        <div style="margin-top: 25px; text-align: center;">
-            <a href="/dashboard" style="text-decoration: none; color: #007bff; font-weight: bold; font-size: 14px;">
-                ← Вернуться в панель управления
-            </a>
-        </div>
+        <a href="/dashboard" class="back-link">
+            ← Вернуться в панель
+        </a>
+
     </div>
 
 </body>
