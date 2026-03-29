@@ -46,9 +46,12 @@ def login(handler, data):
         }
 
         # ВЫВОДИМ КОД В ТЕРМИНАЛ
-        print("\n" + "╔" + "═" * 34 + "╗")
-        print(f"║  КОД ДЛЯ {login_val.upper()}: {verification_code}  ║")
-        print("╚" + "═" * 34 + "╝\n")
+        inner_width = 34
+
+        print("\n" + "╔" + "═" * (inner_width + 2) + "╗")
+        # :<{inner_width} — выравнивает текст по левому краю и добивает пробелами до 34 символов
+        print(f"║ {f'КОД ДЛЯ {login_val.upper()}: {verification_code}':<{inner_width}} ║")
+        print("╚" + "═" * (inner_width + 2) + "╝\n")
 
         # Устанавливаем куку и отправляем на 2FA
         handler.send_response(302)

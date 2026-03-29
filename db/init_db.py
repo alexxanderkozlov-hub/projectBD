@@ -1,7 +1,6 @@
 from db.database import get_db
 from utils.hash import hash_password
 
-
 def init_db():
     conn = get_db()
     cur = conn.cursor()

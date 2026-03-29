@@ -18,65 +18,6 @@ def dashboard(handler):
     })
 
 def show_buy_page(handler):
-    """ГЛАВНЫЙ ЭКРАН: Разделение на Админ-лог (purchases.html) и Магазин (user_shop.html)"""
-    user = handler.get_user()
-    if not user:
-        handler.redirect("/")
-        return
-
-    # Получаем данные текущего пользователя
-    current_user_id = user.get("id") if isinstance(user, dict) else user[0]
-    current_user_login = user.get("login") if isinstance(user, dict) else user[1]
-
-    # === ЛОГИКА ДЛЯ АДМИНА (Просмотр всех транзакций + Удаление) ===
-    if current_user_login == "admin":
-        try:
-            from models.purchase_model import get_all_purchases
-            all_purchases = get_all_purchases()
-        except Exception as e:
-            print(f"Ошибка загрузки данных транзакций: {e}")
-            all_purchases = []
-
-        pur_rows = ""
-        if not all_purchases:
-            pur_rows = "<tr><td colspan='5' style='border:1px solid #dee2e6; padding:15px; text-align:center;'>Транзакции не найдены</td></tr>"
-        else:
-            for p in all_purchases:
-                # Проверяем, как приходят данные (словари или кортежи)
-                if isinstance(p, dict):
-                    pid, u_id, l_id, pdate = p.get('id'), p.get('user_id'), p.get('license_id'), p.get('date')
-                else:
-                    pid, u_id, l_id, pdate = p[0], p[1], p[2], p[3]
-
-                pur_rows += f"""
-                <tr>
-                    <td style="border:1px solid #dee2e6; padding:12px; text-align:center;">{pid}</td>
-                    <td style="border:1px solid #dee2e6; padding:12px; text-align:center;">{u_id}</td>
-                    <td style="border:1px solid #dee2e6; padding:12px; text-align:center;">{l_id}</td>
-                    <td style="border:1px solid #dee2e6; padding:12px; text-align:center;">{pdate}</td>
-                    <td style="border:1px solid #dee2e6; padding:12px; text-align:center;">
-                        <a href="/delete_purchase?id={pid}" 
-                           style="color: #dc3545; text-decoration: none; font-weight: bold; font-size: 13px;"
-                           onclick="return confirm('Удалить эту транзакцию из истории?');">
-                           [удалить]
-                        </a>
-                    </td>
-                </tr>"""
-
-        render_template(handler, "templates/purchases.html", {
-            "{{PURCHASE_ROWS}}": pur_rows
-        })
-
-    # === ЛОГИКА ДЛЯ ОБЫЧНОГО ПОЛЬЗОВАТЕЛЯ (Магазин с данными из БД) ===
-    else:
-        try:
-            from models.license_model import get_licenses_with_products
-            available_items = get_licenses_with_products()
-        except Exception as e:
-            print(f"Ошибка загрузки товаров из БД: {e}")
-            available_items = []
-
-def show_buy_page(handler):
             """ГЛАВНЫЙ ЭКРАН: Разделение на Админ-лог (purchases.html) и Магазин (user_shop.html)"""
             user = handler.get_user()
             if not user:
