@@ -2,8 +2,119 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Вход</title>
+    <title>Вход в систему</title>
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Общие стили для приведения к одному виду (если их нет в style.css) */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .box {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h2 { margin-bottom: 25px; color: #333; }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+
+        button:hover { background-color: #0056b3; }
+
+        /* Стили обновленной лаборатории */
+        .sql-lab {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #fdfdfd; /* Светлый, почти белый фон */
+            border: 1px solid #e2e8f0; /* Нейтральная рамка */
+            border-radius: 10px;
+            text-align: left;
+        }
+
+        .sql-lab h4 {
+            margin: 0 0 15px 0;
+            color: #2d3748;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .lab-input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            box-sizing: border-box;
+            background-color: #fff;
+        }
+
+        /* Синяя кнопка для лаборатории в общем стиле */
+        .btn-check {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .btn-check:hover { background-color: #0056b3; }
+
+        /* Поле вывода результата (Консоль) */
+        #sql-result {
+            margin-top: 15px;
+            padding: 12px;
+            background: #2d3748; /* Темный фон для контраста результата */
+            color: #48bb78; /* Зеленый текст */
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            border-radius: 6px;
+            min-height: 50px;
+            white-space: pre-wrap;
+            border: 1px solid #1a202c;
+            word-break: break-all; /* Чтобы хэш пароля не вылезал */
+            overflow-wrap: break-word;
+        }
+    </style>
 </head>
 <body>
 
@@ -16,13 +127,42 @@
         <button type="submit">Войти</button>
     </form>
 
-    <div class="hint">
-        🔹 логин: admin<br>
-        🔹 пароль: admin123<br>
-        🔹 логин: user<br>
-        🔹 пароль: user123<br>
+    <div class="sql-lab">
+        <h4>Работа SQL-инъекции</h4>
+
+
+        <input type="text" id="lab-payload" class="lab-input" value="admin' -- ">
+
+        <button type="button" class="btn-check" onclick="runInjection()">Проверить уязвимость</button>
+
+        <div id="sql-result">Результат анализа появится здесь...</div>
     </div>
 </div>
+
+<script>
+    async function runInjection() {
+        const payload = document.getElementById('lab-payload').value;
+        const resultDiv = document.getElementById('sql-result');
+
+        resultDiv.style.color = "#a0aec0";
+        resultDiv.innerText = "Выполнение запроса к базе данных...";
+
+        try {
+            const response = await fetch('/sql_lab_run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'payload=' + encodeURIComponent(payload)
+            });
+
+            const data = await response.text();
+            resultDiv.style.color = "#48bb78"; // Зеленый для успеха
+            resultDiv.innerText = data;
+        } catch (error) {
+            resultDiv.style.color = "#f56565"; // Красный для ошибки связи
+            resultDiv.innerText = "Ошибка: не удалось связаться с сервером.";
+        }
+    }
+</script>
 
 </body>
 </html>

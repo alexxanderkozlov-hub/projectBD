@@ -205,6 +205,36 @@ class MyHandler(BaseHTTPRequestHandler):
         path = self.path
         print(f"--- POST запрос: {path} ---")
 
+        # --- 0. СПЕЦИАЛЬНЫЙ РОУТ ДЛЯ SQL-КОНСОЛИ (ЛАБОРАТОРИЯ) ---
+        # Должен быть выше проверки сессии, так как доступен на странице входа
+        if path == "/sql_lab_run":
+            payload = data.get("payload", [""])[0]
+            print(f"[LAB] Тестирование инъекции: {payload}")
+
+            # Импортируем функцию из вашей модели
+            from models.user_model import get_user_by_login
+            user = get_user_by_login(payload)
+
+            # Отправляем текстовый ответ для отображения в консоли (черном окошке)
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain; charset=utf-8")
+            self.end_headers()
+
+            if user:
+                # Формируем отчет об успешном "взломе"
+                res = (
+                    f"✅ SQL-ИНЪЕКЦИЯ ВЫПОЛНЕНА УСПЕШНО!\n"
+                    f"----------------------------------\n"
+                    f"Данные из БД: {user}\n"
+                    f"Найден логин: {user.get('login')}\n"
+                    f"Роль в системе: {user.get('role')}"
+                )
+            else:
+                res = "❌ ОШИБКА: Пользователь не найден.\nSQL запрос не вернул результатов или синтаксис неверный."
+
+            self.wfile.write(res.encode("utf-8"))
+            return
+
         # --- 1. АВТОРИЗАЦИЯ И ВЕРИФИКАЦИЯ (БЕЗ ПРОВЕРКИ СЕССИИ) ---
         if path == "/login":
             from routes.auth_routes import login
@@ -260,7 +290,7 @@ class MyHandler(BaseHTTPRequestHandler):
                 add_license(prod_id, l_type, dur)
             self.redirect("/licenses")
 
-            # СОХРАНЕНИЕ ИЗМЕНЕНИЙ ЛИЦЕНЗИИ (POST)
+        # СОХРАНЕНИЕ ИЗМЕНЕНИЙ ЛИЦЕНЗИИ (POST)
         elif path == "/edit_license":
             l_id = data.get("license_id", [""])[0]
             p_id = data.get("product_id", [""])[0]
@@ -288,15 +318,12 @@ class MyHandler(BaseHTTPRequestHandler):
     # Вспомогательный метод для обработки покупки
     def handle_purchase_logic(self, lic_id):
         """Связывает пользователя и лицензию в таблице purchases"""
-        # 1. Проверяем, авторизован ли пользователь
         user = self.get_user()
         if not user:
             print("[SHOP] Ошибка: попытка покупки без авторизации")
             return self.redirect("/")
 
         try:
-            # 2. Безопасное извлечение user_id
-            # Проверяем все возможные варианты хранения (словарь 'id', словарь 'user_id' или кортеж)
             if isinstance(user, dict):
                 user_id = user.get("id") or user.get("user_id")
             else:
@@ -305,33 +332,23 @@ class MyHandler(BaseHTTPRequestHandler):
             if not user_id:
                 raise ValueError("ID пользователя не найден в данных сессии")
 
-            # 3. Валидация ID лицензии
             if not lic_id:
                 return self.send_error(400, "ID лицензии не передан")
 
             license_id_int = int(lic_id)
 
-            # 4. Запись в базу данных
             from models.purchase_model import make_purchase
-
             if make_purchase(user_id, license_id_int):
                 print(f"[SUCCESS] Покупка оформлена: User {user_id} купил License {license_id_int}")
-
-                # 5. РЕДИРЕКТ: Обычного пользователя всегда возвращаем в магазин (/orders)
-                # Админа теоретически можно кинуть в /keys, но для единообразия лучше тоже в /orders
                 self.redirect("/orders")
             else:
-                print(f"[DB ERROR] Не удалось записать покупку в базу: User {user_id}, Lic {lic_id}")
-                self.send_error(500, "Ошибка базы данных при оформлении покупки")
+                print(f"[DB ERROR] Не удалось записать покупку в базу")
+                self.send_error(500, "Ошибка базы данных")
 
-        except ValueError as ve:
-            print(f"[ERROR] Ошибка данных (возможно lic_id не число): {ve}")
-            self.send_error(400, "Некорректные данные запроса")
         except Exception as e:
-            print(f"[CRITICAL ERROR] Ошибка в handle_purchase_logic: {e}")
-            self.send_error(500, f"Внутренняя ошибка сервера: {str(e)}")
+            print(f"[ERROR] Ошибка в handle_purchase_logic: {e}")
+            self.send_error(500, "Внутренняя ошибка сервера")
 
-    # --- СТАНДАРТНЫЕ МЕТОДЫ ---
     def get_session(self):
         cookie_header = self.headers.get("Cookie", "")
         if "session_id=" not in cookie_header: return None
@@ -360,12 +377,9 @@ class MyHandler(BaseHTTPRequestHandler):
         try:
             with open(path, "r", encoding="utf-8") as f:
                 html = f.read()
-
-            # Если есть данные для подстановки
             if context:
                 for key, value in context.items():
                     html = html.replace(key, value)
-
             self.send_html(html)
         except Exception as e:
             print(f"[RENDER ERROR] {e}")
