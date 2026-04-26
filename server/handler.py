@@ -210,7 +210,8 @@ class MyHandler(BaseHTTPRequestHandler):
         import injections.task_8 as t8
         import injections.task_9 as t9
         import injections.task_10 as t10
-        import injections.task_11 as t11  # ✅ ДОБАВИЛИ
+        import injections.task_11 as t11
+        import injections.task_12 as t12
 
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length).decode('utf-8')
@@ -271,7 +272,8 @@ class MyHandler(BaseHTTPRequestHandler):
             # =========================
             # ОПРЕДЕЛЕНИЕ ЗАДАНИЙ
             # =========================
-            is_task_11 = "BLIND" in lv_up  # ✅ НОВОЕ
+            is_task_12 = "ORDER" in lv_up
+            is_task_11 = "BLIND" in lv_up
             is_task_10 = "EXECUTE" in lv_up
             is_task_9 = "SLEEP" in lv_up
             is_task_8 = "HEADER" in lv_up
@@ -280,33 +282,58 @@ class MyHandler(BaseHTTPRequestHandler):
             is_task_5 = "CTE" in lv_up
 
             is_task_3 = not (
-                        is_task_11 or is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5) and (
-                                "' OR '" in login_val or "' OR '" in pass_val)
+                    is_task_11 or is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5
+            ) and ("' OR '" in login_val or "' OR '" in pass_val)
 
             is_task_2 = not (
-                    is_task_11 or is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3) and (
-                                ";" in login_val or "DROP" in lv_up or "%" in login_val)
+                    is_task_11 or is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3
+            ) and (";" in login_val or "DROP" in lv_up or "%" in login_val)
 
             is_task_1 = not (
-                    is_task_11 or is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3 or is_task_2) and (
-                                login_val.isdigit() or "OR" in lv_up)
+                    is_task_11 or is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3 or is_task_2
+            ) and (login_val.isdigit() or "OR" in lv_up)
 
             # =========================
-            # ОБЩИЙ БЛОК (1-11)
+            # ОБЩИЙ БЛОК
             # =========================
-            if is_task_1 or is_task_2 or is_task_3 or is_task_5 or is_task_6 or is_task_7 or is_task_8 or is_task_9 or is_task_10 or is_task_11:
+            if any([
+                is_task_1, is_task_2, is_task_3,
+                is_task_5, is_task_6, is_task_7,
+                is_task_8, is_task_9, is_task_10,
+                is_task_11, is_task_12
+            ]):
 
                 use_safe = (pass_val.lower() == "safe")
+
                 status = "Обработка запроса"
                 results = []
+                query_text = ""
+                title = ""
+                cols = []
 
                 # =========================
-                # ЗАДАНИЕ 11 (BLIND)
+                # TASK 12 (FIXED)
                 # =========================
-                if is_task_11:
-                    clean_input = re.sub(r'(?i)BLIND', '', login_val).strip()
-                    if not clean_input:
-                        clean_input = "1"
+                if is_task_12:
+                    clean_input = re.sub(r'(?i)\bORDER\b', '', login_val).strip()
+
+                    # FIX: защита от пустого/битого input
+                    if not clean_input or clean_input.upper() in ["BY", ""]:
+                        clean_input = "price"
+
+                    if use_safe:
+                        results, query_text, status = t12.run_task_12_safe(clean_input)
+                    else:
+                        results, query_text, status = t12.run_task_12(clean_input)
+
+                    title = "Задание №12: SQL Injection в ORDER BY"
+                    cols = ["ID Лицензии", "Тип ПО", "Цена"]
+
+                # =========================
+                # TASK 11
+                # =========================
+                elif is_task_11:
+                    clean_input = re.sub(r'(?i)BLIND', '', login_val).strip() or "1"
 
                     if use_safe:
                         results, query_text, status = t11.run_task_11_safe(clean_input)
@@ -317,12 +344,10 @@ class MyHandler(BaseHTTPRequestHandler):
                     cols = ["License ID", "Type"]
 
                 # =========================
-                # ЗАДАНИЕ 10
+                # TASK 10
                 # =========================
                 elif is_task_10:
-                    clean_id = re.sub(r'(?i)EXECUTE', '', login_val).strip()
-                    if not clean_id:
-                        clean_id = "1"
+                    clean_id = re.sub(r'(?i)EXECUTE', '', login_val).strip() or "1"
 
                     if use_safe:
                         results, query_text, status = t10.run_task_10_safe(clean_id)
@@ -334,12 +359,10 @@ class MyHandler(BaseHTTPRequestHandler):
                     results = [[status]]
 
                 # =========================
-                # ЗАДАНИЕ 9
+                # TASK 9
                 # =========================
                 elif is_task_9:
-                    clean_name = re.sub(r'(?i)SLEEP', '', login_val).strip()
-                    if not clean_name:
-                        clean_name = "admin"
+                    clean_name = re.sub(r'(?i)SLEEP', '', login_val).strip() or "admin"
 
                     if use_safe:
                         results, query_text, status = t9.run_task_9_safe(clean_name)
@@ -350,10 +373,11 @@ class MyHandler(BaseHTTPRequestHandler):
                     cols = ["Логин"]
 
                 # =========================
-                # ЗАДАНИЕ 8
+                # TASK 8
                 # =========================
                 elif is_task_8:
                     ua_value = self.headers.get('User-Agent', 'Unknown')
+
                     if use_safe:
                         _, query_text, status = t8.run_task_8_safe(ua_value)
                     else:
@@ -364,12 +388,10 @@ class MyHandler(BaseHTTPRequestHandler):
                     results = [[f"User-Agent: {ua_value}"]]
 
                 # =========================
-                # ЗАДАНИЕ 7
+                # TASK 7
                 # =========================
                 elif is_task_7:
-                    clean_id = re.sub(r'(?i)META', '', login_val).strip()
-                    if not clean_id:
-                        clean_id = "1"
+                    clean_id = re.sub(r'(?i)META', '', login_val).strip() or "1"
 
                     if use_safe:
                         results, query_text, status = t7.run_task_7_safe(clean_id)
@@ -380,7 +402,7 @@ class MyHandler(BaseHTTPRequestHandler):
                     cols = ["ID", "Имя"]
 
                 # =========================
-                # ЗАДАНИЕ 6
+                # TASK 6
                 # =========================
                 elif is_task_6:
                     clean_params = re.sub(r'(?i)PAGE', '', login_val).strip()
@@ -397,12 +419,10 @@ class MyHandler(BaseHTTPRequestHandler):
                     cols = ["ID", "Имя"]
 
                 # =========================
-                # ЗАДАНИЕ 5
+                # TASK 5
                 # =========================
                 elif is_task_5:
-                    clean_id = re.sub(r'(?i)CTE', '', login_val).strip()
-                    if not clean_id:
-                        clean_id = "1"
+                    clean_id = re.sub(r'(?i)CTE', '', login_val).strip() or "1"
 
                     if use_safe:
                         results, query_text, status = t5.run_task_5_safe(clean_id)
@@ -413,7 +433,7 @@ class MyHandler(BaseHTTPRequestHandler):
                     cols = ["ID", "Информация"]
 
                 # =========================
-                # ЗАДАНИЕ 3
+                # TASK 3
                 # =========================
                 elif is_task_3:
                     results, status, query_text = (
@@ -425,7 +445,7 @@ class MyHandler(BaseHTTPRequestHandler):
                     cols = ["user_id", "role_id", "login", "password_hash", "totp_secret"]
 
                 # =========================
-                # ЗАДАНИЕ 2
+                # TASK 2
                 # =========================
                 elif is_task_2:
                     results, status, query_text = (
@@ -437,7 +457,7 @@ class MyHandler(BaseHTTPRequestHandler):
                     cols = ["Найденные логины"]
 
                 # =========================
-                # ЗАДАНИЕ 1
+                # TASK 1
                 # =========================
                 else:
                     results, query_text = (
@@ -450,10 +470,8 @@ class MyHandler(BaseHTTPRequestHandler):
                     cols = ["user_id", "role_id", "login", "password_hash", "totp_secret"]
 
                 # =========================
-                # HTML
+                # HTML OUTPUT
                 # =========================
-                color = "#4CAF50" if use_safe else "#f44336"
-
                 rows = ""
                 for r in results:
                     rows += "<tr>" + "".join([f"<td>{item}</td>" for item in r]) + "</tr>"
