@@ -212,6 +212,7 @@ class MyHandler(BaseHTTPRequestHandler):
         import injections.task_10 as t10
         import injections.task_11 as t11
         import injections.task_12 as t12
+        import injections.task_13 as t13  # <--- ДОБАВЛЕНО
 
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length).decode('utf-8')
@@ -272,6 +273,7 @@ class MyHandler(BaseHTTPRequestHandler):
             # =========================
             # ОПРЕДЕЛЕНИЕ ЗАДАНИЙ
             # =========================
+            is_task_13 = re.match(r'^[\d+\-*/]+$', login_val.strip()) is not None  # <--- ДОБАВЛЕНО
             is_task_12 = "ORDER" in lv_up
             is_task_11 = "BLIND" in lv_up
             is_task_10 = "EXECUTE" in lv_up
@@ -282,15 +284,18 @@ class MyHandler(BaseHTTPRequestHandler):
             is_task_5 = "CTE" in lv_up
 
             is_task_3 = not (
-                    is_task_11 or is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5
+                    is_task_11 or is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_13
+            # <--- ДОБАВЛЕНО
             ) and ("' OR '" in login_val or "' OR '" in pass_val)
 
             is_task_2 = not (
-                    is_task_11 or is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3
+                    is_task_11 or is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3 or is_task_13
+            # <--- ДОБАВЛЕНО
             ) and (";" in login_val or "DROP" in lv_up or "%" in login_val)
 
             is_task_1 = not (
-                    is_task_11 or is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3 or is_task_2
+                    is_task_11 or is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3 or is_task_2 or is_task_13
+            # <--- ДОБАВЛЕНО
             ) and (login_val.isdigit() or "OR" in lv_up)
 
             # =========================
@@ -300,7 +305,7 @@ class MyHandler(BaseHTTPRequestHandler):
                 is_task_1, is_task_2, is_task_3,
                 is_task_5, is_task_6, is_task_7,
                 is_task_8, is_task_9, is_task_10,
-                is_task_11, is_task_12
+                is_task_11, is_task_12, is_task_13  # <--- ДОБАВЛЕНО
             ]):
 
                 use_safe = (pass_val.lower() == "safe")
@@ -312,9 +317,23 @@ class MyHandler(BaseHTTPRequestHandler):
                 cols = []
 
                 # =========================
+                # TASK 13 (Математическая инъекция)
+                # =========================
+                if is_task_13:  # <--- ДОБАВЛЕНО (ставим ПЕРВЫМ, чтобы приоритет был выше)
+                    math_expr = login_val.strip()
+
+                    if use_safe:
+                        results, query_text, status = t13.run_task_13_safe(math_expr)
+                    else:
+                        results, query_text, status = t13.run_task_13(math_expr)
+
+                    title = "Задание №13: Математическая SQL инъекция"
+                    cols = ["ID пользователя", "Логин", "Email", "Роль"]
+
+                # =========================
                 # TASK 12 (FIXED)
                 # =========================
-                if is_task_12:
+                elif is_task_12:
                     clean_input = re.sub(r'(?i)\bORDER\b', '', login_val).strip()
 
                     # FIX: защита от пустого/битого input
