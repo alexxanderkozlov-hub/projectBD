@@ -207,7 +207,8 @@ class MyHandler(BaseHTTPRequestHandler):
         import injections.task_5 as t5
         import injections.task_6 as t6
         import injections.task_7 as t7
-        import injections.task_8 as t8  # ДОБАВИЛИ
+        import injections.task_8 as t8
+        import injections.task_9 as t9  # ДОБАВИЛИ ЗАДАНИЕ 9
 
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length).decode('utf-8')
@@ -262,39 +263,54 @@ class MyHandler(BaseHTTPRequestHandler):
             lv_up = login_val.upper()
 
             # ОПРЕДЕЛЕНИЕ ЗАДАНИЙ
-            is_task_8 = "HEADER" in lv_up  # НОВОЕ ЗАДАНИЕ
+            is_task_9 = "SLEEP" in lv_up  # НОВОЕ ЗАДАНИЕ (9)
+            is_task_8 = "HEADER" in lv_up
             is_task_7 = "META" in lv_up
             is_task_6 = "PAGE" in lv_up
             is_task_5 = "CTE" in lv_up
 
-            is_task_3 = not (is_task_5 or is_task_6 or is_task_7 or is_task_8) and (
+            is_task_3 = not (is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5) and (
                     "' OR '" in login_val or "' OR '" in pass_val)
 
-            is_task_2 = not (is_task_5 or is_task_3 or is_task_6 or is_task_7 or is_task_8) and (
+            is_task_2 = not (is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3) and (
                     ";" in login_val or "DROP" in lv_up or "%" in login_val)
 
-            is_task_1 = not (is_task_5 or is_task_3 or is_task_2 or is_task_6 or is_task_7 or is_task_8) and (
-                    login_val.isdigit() or "OR" in lv_up)
+            is_task_1 = not (
+                        is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3 or is_task_2) and (
+                                login_val.isdigit() or "OR" in lv_up)
 
-            # ОБЩИЙ БЛОК
-            if is_task_1 or is_task_2 or is_task_3 or is_task_5 or is_task_6 or is_task_7 or is_task_8:
+            # ОБЩИЙ БЛОК ДЛЯ ВСЕХ ЗАДАНИЙ (1-9)
+            if is_task_1 or is_task_2 or is_task_3 or is_task_5 or is_task_6 or is_task_7 or is_task_8 or is_task_9:
 
                 use_safe = (pass_val.lower() == "safe")
                 status = "Обработка запроса"
                 results = []
 
                 # =========================
+                # ЗАДАНИЕ 9 (FUNCTIONS / TIME-BASED)
+                # =========================
+                if is_task_9:
+                    # Убираем метку SLEEP из логина, чтобы выполнить чистый поиск
+                    clean_name = re.sub(r'(?i)SLEEP', '', login_val).strip()
+                    if not clean_name: clean_name = "admin"
+
+                    if use_safe:
+                        results, query_text, status = t9.run_task_9_safe(clean_name)
+                    else:
+                        results, query_text, status = t9.run_task_9(login_val)  # Передаем login_val с инъекцией
+
+                    title = "Задание №9: Инъекция функций БД (Time-Based)"
+                    cols = ["Логин"]
+
+                # =========================
                 # ЗАДАНИЕ 8 (HTTP HEADER)
                 # =========================
-                if is_task_8:
-                    # Читаем заголовок User-Agent напрямую из self.headers
+                elif is_task_8:
                     ua_value = self.headers.get('User-Agent', 'Unknown')
-
                     if use_safe:
                         _, query_text, status = t8.run_task_8_safe(ua_value)
                     else:
                         _, query_text, status = t8.run_task_8(ua_value)
-
                     title = "Задание №8: Инъекция через HTTP Header"
                     cols = ["Информация"]
                     results = [[f"Записанный User-Agent: {ua_value}"]]
@@ -305,12 +321,10 @@ class MyHandler(BaseHTTPRequestHandler):
                 elif is_task_7:
                     clean_id = re.sub(r'(?i)META', '', login_val).strip()
                     if not clean_id: clean_id = "1"
-
                     if use_safe:
                         results, query_text, status = t7.run_task_7_safe(clean_id)
                     else:
                         results, query_text, status = t7.run_task_7(clean_id)
-
                     title = "Задание №7: UNION SQL Injection (метаданные)"
                     cols = ["ID", "Имя"]
 
@@ -322,12 +336,10 @@ class MyHandler(BaseHTTPRequestHandler):
                     parts = clean_params.split()
                     limit = parts[0] if len(parts) > 0 else "2"
                     offset = parts[1] if len(parts) > 1 else "0"
-
                     if use_safe:
                         results, query_text, status = t6.run_task_6_safe(limit, offset)
                     else:
                         results, query_text, status = t6.run_task_6(limit, offset)
-
                     title = "Задание №6: Пагинация (LIMIT/OFFSET)"
                     cols = ["ID", "Имя"]
 
@@ -337,12 +349,10 @@ class MyHandler(BaseHTTPRequestHandler):
                 elif is_task_5:
                     clean_id = re.sub(r'(?i)CTE', '', login_val).strip()
                     if not clean_id: clean_id = "1"
-
                     if use_safe:
                         results, query_text, status = t5.run_task_5_safe(clean_id)
                     else:
                         results, query_text, status = t5.run_task_5(clean_id)
-
                     title = "Задание №5: CTE Injection"
                     cols = ["ID", "Информация"]
 
@@ -380,7 +390,7 @@ class MyHandler(BaseHTTPRequestHandler):
                     status = "Данные извлечены"
                     cols = ["user_id", "role_id", "login", "password_hash", "totp_secret"]
 
-                # HTML ОТВЕТ (общий для всех заданий)
+                # HTML ОТВЕТ
                 color = "#4CAF50" if use_safe else "#f44336"
                 rows = ""
                 for r in results:
