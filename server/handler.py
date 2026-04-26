@@ -197,7 +197,11 @@ class MyHandler(BaseHTTPRequestHandler):
             return self.send_error(404, f"Путь {path} не найден")
 
     def do_POST(self):
-        # Получаем данные из тела запроса
+        import urllib.parse
+        import injections.task_1 as t1
+        import injections.task_2 as t2
+
+        # Получаем данные
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length).decode('utf-8')
         data = urllib.parse.parse_qs(body)
@@ -205,8 +209,55 @@ class MyHandler(BaseHTTPRequestHandler):
         path = self.path
         print(f"--- POST запрос: {path} ---")
 
-        # --- 1. АВТОРИЗАЦИЯ И ВЕРИФИКАЦИЯ (БЕЗ ПРОВЕРКИ СЕССИИ) ---
+        # --- 1. АВТОРИЗАЦИЯ И ИНЪЕКЦИИ ---
         if path == "/login":
+            # Берем данные ТОЛЬКО из стандартных полей
+            login_val = data.get('login', [''])[0].strip()
+            pass_val = data.get('password', [''])[0].strip().lower()
+
+            is_task_2 = ";" in login_val or "DROP" in login_val.upper() or "%" in login_val
+            is_task_1 = login_val.isdigit() or "OR" in login_val.upper()
+
+            if is_task_1 or is_task_2:
+                use_safe = (pass_val == "safe")
+
+                if is_task_2:
+                    results, status, query_text = t2.run_task_2_safe(login_val) if use_safe else t2.run_task_2(
+                        login_val)
+                    title = "Задание 2 (LIKE и DROP)"
+                else:
+                    results, query_text = t1.run_task_1_safe(login_val) if use_safe else t1.run_task_1(login_val)
+                    title = "Задание 1 (Поиск по ID)"
+                    status = "Поиск выполнен"
+
+                # Формируем таблицу с результатами
+                rows = ""
+                for r in results:
+                    rows += "<tr>" + "".join([f"<td>{item}</td>" for item in r]) + "</tr>"
+
+                # ЧИСТЫЙ ВЫВОД РЕЗУЛЬТАТОВ (БЕЗ ФОРМ)
+                response_html = f"""
+                <html>
+                <body style="font-family: sans-serif; padding: 20px;">
+                    <h2 style="color: {'green' if use_safe else 'red'};">{title}</h2>
+                    <p><b>Режим:</b> {'Параметризация (Безопасно)' if use_safe else 'f-строка (Уязвимо)'}</p>
+                    <p><b>Ввод:</b> <code>{login_val}</code></p>
+                    <p><b>Запрос к БД:</b> <code>{query_text}</code></p>
+                    <p><b>Статус БД:</b> {status}</p>
+                    <table border="1" style="border-collapse: collapse; width: 100%; margin-top: 15px;">
+                        {rows if rows else "<tr><td>Нет данных</td></tr>"}
+                    </table>
+                    <br><br><a href="/">← Назад</a>
+                </body>
+                </html>
+                """
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(response_html.encode('utf-8'))
+                return
+
+            # Если это обычный пользователь (не инъекция)
             from routes.auth_routes import login
             return login(self, data)
 
@@ -214,76 +265,56 @@ class MyHandler(BaseHTTPRequestHandler):
             from routes.auth_routes import verify
             return verify(self, data)
 
-        # --- 2. ВСЕ ОСТАЛЬНЫЕ ДЕЙСТВИЯ (ТРЕБУЮТ АВТОРИЗАЦИИ И ПРОЙДЕННОГО 2FA) ---
+        # --- 2. ЗАКРЫТАЯ ЧАСТЬ (ТРЕБУЕТ 2FA) ---
         session = self.get_session()
         if not session or not session.get("2fa"):
-            print(f"[POST] Доступ запрещен: сессия не авторизована для {path}")
             return self.redirect("/")
 
-        # ЛОГИКА ПОКУПКИ (для обычного юзера)
         if path == "/buy":
             lic_id = data.get("license_id", [None])[0]
-            if lic_id:
-                self.handle_purchase_logic(lic_id)
-            else:
-                self.send_error(400, "ID лицензии не указан")
+            if lic_id: self.handle_purchase_logic(lic_id)
+            self.redirect("/licenses")
 
-        # ДОБАВЛЕНИЕ НОВОГО ПРОДУКТА (Admin Only)
         elif path == "/add_product":
-            name = data.get("name", [""])[0]
-            version = data.get("version", [""])[0]
-            price = data.get("price", [""])[0]
-            if name and version and price:
+            n, v, p = data.get("name", [""])[0], data.get("version", [""])[0], data.get("price", [""])[0]
+            if n and v and p:
                 from models.product_model import add_product
-                add_product(name, version, price)
+                add_product(n, v, p)
             self.redirect("/products")
 
         elif path == "/edit_product":
-            p_id = data.get("product_id", [""])[0]
-            name = data.get("name", [""])[0]
-            version = data.get("version", [""])[0]
-            price = data.get("price", [""])[0]
-
-            if p_id and name and version and price:
+            i, n, v, p = data.get("product_id", [""])[0], data.get("name", [""])[0], data.get("version", [""])[0], \
+            data.get("price", [""])[0]
+            if i and n and v and p:
                 from models.product_model import update_product
-                update_product(p_id, name, version, price)
+                update_product(i, n, v, p)
+            self.redirect("/products")
 
-            return self.redirect("/products")
-
-        # ДОБАВЛЕНИЕ НОВОЙ ЛИЦЕНЗИИ (Admin Only)
         elif path == "/add_license":
-            prod_id = data.get("product_id", [""])[0]
-            l_type = data.get("license_type", [""])[0]
-            dur = data.get("duration_days", [""])[0]
-            if prod_id and l_type and dur:
+            pi, lt, d = data.get("product_id", [""])[0], data.get("license_type", [""])[0], \
+            data.get("duration_days", [""])[0]
+            if pi and lt and d:
                 from models.license_model import add_license
-                add_license(prod_id, l_type, dur)
+                add_license(pi, lt, d)
             self.redirect("/licenses")
 
-            # СОХРАНЕНИЕ ИЗМЕНЕНИЙ ЛИЦЕНЗИИ (POST)
         elif path == "/edit_license":
-            l_id = data.get("license_id", [""])[0]
-            p_id = data.get("product_id", [""])[0]
-            l_type = data.get("license_type", [""])[0]
-            days = data.get("duration_days", [""])[0]
-
-            if l_id and p_id and l_type and days:
+            li, pi, lt, d = data.get("license_id", [""])[0], data.get("product_id", [""])[0], \
+            data.get("license_type", [""])[0], data.get("duration_days", [""])[0]
+            if li and pi and lt and d:
                 from models.license_model import update_license
-                update_license(l_id, p_id, l_type, days)
+                update_license(li, pi, lt, d)
+            self.redirect("/licenses")
 
-            return self.redirect("/licenses")
-
-        # ДОБАВЛЕНИЕ КЛЮЧА ВРУЧНУЮ (Admin Only)
         elif path == "/add_key":
-            lic_id = data.get("license_id", [""])[0]
-            key_code = data.get("license_key", [""])[0]
-            if lic_id and key_code:
+            li, kc = data.get("license_id", [""])[0], data.get("license_key", [""])[0]
+            if li and kc:
                 from models.key_model import add_new_key
-                add_new_key(lic_id, key_code)
+                add_new_key(li, kc)
             self.redirect("/keys")
 
         else:
-            self.send_error(404, "POST путь не найден")
+            self.send_error(404, "Путь не найден")
 
     # Вспомогательный метод для обработки покупки
     def handle_purchase_logic(self, lic_id):
