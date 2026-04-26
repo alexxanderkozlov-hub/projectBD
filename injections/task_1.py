@@ -59,4 +59,3 @@ def run_task_1_safe(user_input_id):
     finally:
         if conn: conn.close()
 
-    return results, log_query
