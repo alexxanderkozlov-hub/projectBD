@@ -203,16 +203,18 @@ class MyHandler(BaseHTTPRequestHandler):
         import injections.task_2 as t2
         import injections.task_3 as t3
         import injections.task_4 as t4
-        import injections.task_5 as t5  # Добавили 5-е задание
+        import injections.task_5 as t5
+        import injections.task_6 as t6  # ✅ ДОБАВИЛИ 6 ЗАДАНИЕ
 
-        # 1. Считываем тело запроса
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length).decode('utf-8')
 
         path = self.path
         print(f"--- POST запрос: {path} ---")
 
-        # --- ЗАДАНИЕ №4: ОБРАБОТКА API (JSON) ---
+        # =========================
+        # ЗАДАНИЕ 4 (JSON API)
+        # =========================
         if path == "/api/add_user":
             try:
                 json_data = json.loads(body)
@@ -237,68 +239,115 @@ class MyHandler(BaseHTTPRequestHandler):
                     "sql_query": query_text,
                     "database_info": db_status
                 }
+
                 self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
                 return
+
             except Exception as e:
                 self.send_error(400, f"Ошибка парсинга JSON: {str(e)}")
                 return
 
-        # --- СЕКЦИЯ 1: АВТОРИЗАЦИЯ И ЛАБОРАТОРНЫЕ (HTML ФОРМЫ) ---
+        # =========================
+        # FORM DATA
+        # =========================
         data = urllib.parse.parse_qs(body)
 
         if path == "/login":
             login_val = data.get('login', [''])[0].strip()
             pass_val = data.get('password', [''])[0].strip()
 
-            # --- ОПРЕДЕЛЕНИЕ ТЕКУЩЕГО ЗАДАНИЯ ---
-            # Задание 5: CTE (если в логине есть слово CTE)
+            # =========================
+            # ОПРЕДЕЛЕНИЕ ЗАДАНИЙ
+            # =========================
+            is_task_6 = "PAGE" in login_val.upper()  # ✅ ДОБАВИЛИ
             is_task_5 = "CTE" in login_val.upper()
-            # Задание 3: Обход (кавычка + OR)
-            is_task_3 = not is_task_5 and ("' OR '" in login_val or "' OR '" in pass_val)
-            # Задание 2: LIKE, DROP или точка с запятой
-            is_task_2 = not is_task_5 and not is_task_3 and (
-                        ";" in login_val or "DROP" in login_val.upper() or "%" in login_val)
-            # Задание 1: Поиск по ID
-            is_task_1 = not is_task_5 and not is_task_3 and not is_task_2 and (
-                        login_val.isdigit() or "OR" in login_val.upper())
+            is_task_3 = not is_task_5 and not is_task_6 and ("' OR '" in login_val or "' OR '" in pass_val)
+            is_task_2 = not is_task_5 and not is_task_3 and not is_task_6 and (
+                    ";" in login_val or "DROP" in login_val.upper() or "%" in login_val)
+            is_task_1 = not is_task_5 and not is_task_3 and not is_task_2 and not is_task_6 and (
+                    login_val.isdigit() or "OR" in login_val.upper())
 
-            if is_task_1 or is_task_2 or is_task_3 or is_task_5:
+            # =========================
+            # ОБЩИЙ УСЛОВНЫЙ БЛОК
+            # =========================
+            if is_task_1 or is_task_2 or is_task_3 or is_task_5 or is_task_6:
+
                 use_safe = (pass_val.lower() == "safe")
+
                 status = "Обработка запроса"
 
-                if is_task_5:
-                    # ВЫПОЛНЯЕМ ЗАДАНИЕ 5 (CTE)
+                # =========================
+                # ЗАДАНИЕ 6 (ПАГИНАЦИЯ)
+                # =========================
+                if is_task_6:
+                    parts = login_val.upper().replace("PAGE", "").strip().split()
+
+                    limit = parts[0] if len(parts) > 0 else "2"
+                    offset = parts[1] if len(parts) > 1 else "0"
+
+                    if use_safe:
+                        results, query_text, status = t6.run_task_6_safe(limit, offset)
+                    else:
+                        results, query_text, status = t6.run_task_6(limit, offset)
+
+                    title = "Задание №6: Пагинация (LIMIT/OFFSET)"
+                    cols = ["ID", "Имя"]
+
+                # =========================
+                # ЗАДАНИЕ 5 (CTE)
+                # =========================
+                elif is_task_5:
                     clean_id = login_val.upper().replace("CTE", "").strip()
-                    if not clean_id: clean_id = "1"  # Значение по умолчанию
+                    if not clean_id:
+                        clean_id = "1"
 
                     if use_safe:
                         results, query_text, status = t5.run_task_5_safe(clean_id)
                     else:
                         results, query_text, status = t5.run_task_5(clean_id)
-                    title = "Задание №5: Инъекция в CTE (WITH ... AS)"
+
+                    title = "Задание №5: Инъекция в CTE"
                     cols = ["ID", "Информация"]
 
+                # =========================
+                # ЗАДАНИЕ 3
+                # =========================
                 elif is_task_3:
-                    results, status, query_text = t3.run_task_3_safe(login_val,
-                                                                     pass_val) if use_safe else t3.run_task_3(login_val,
-                                                                                                              pass_val)
+                    results, status, query_text = (
+                        t3.run_task_3_safe(login_val, pass_val)
+                        if use_safe else t3.run_task_3(login_val, pass_val)
+                    )
                     title = "Задание №3: Обход авторизации"
                     cols = ["user_id", "role_id", "login", "password_hash", "totp_secret"]
 
+                # =========================
+                # ЗАДАНИЕ 2
+                # =========================
                 elif is_task_2:
-                    results, status, query_text = t2.run_task_2_safe(login_val) if use_safe else t2.run_task_2(
-                        login_val)
+                    results, status, query_text = (
+                        t2.run_task_2_safe(login_val)
+                        if use_safe else t2.run_task_2(login_val)
+                    )
                     title = "Задание №2: LIKE + DROP"
                     cols = ["Найденные логины"]
 
+                # =========================
+                # ЗАДАНИЕ 1
+                # =========================
                 else:
-                    results, query_text = t1.run_task_1_safe(login_val) if use_safe else t1.run_task_1(login_val)
+                    results, query_text = (
+                        t1.run_task_1_safe(login_val)
+                        if use_safe else t1.run_task_1(login_val)
+                    )
                     title = "Задание №1: Поиск по ID"
                     status = "Данные извлечены"
                     cols = ["user_id", "role_id", "login", "password_hash", "totp_secret"]
 
-                # Формирование HTML ответа
+                # =========================
+                # HTML ОТВЕТ
+                # =========================
                 color = "#4CAF50" if use_safe else "#f44336"
+
                 rows = ""
                 for r in results:
                     rows += "<tr>" + "".join([f"<td>{item}</td>" for item in r]) + "</tr>"
@@ -307,26 +356,38 @@ class MyHandler(BaseHTTPRequestHandler):
                 <html>
                 <head><meta charset="UTF-8"><style>
                     body {{ font-family: sans-serif; padding: 20px; background: #f4f4f4; }}
-                    .container {{ background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); max-width: 900px; margin: auto; }}
+                    .container {{ background: white; padding: 20px; border-radius: 10px;
+                                  box-shadow: 0 0 10px rgba(0,0,0,0.1); max-width: 900px; margin: auto; }}
                     .header {{ background: {color}; color: white; padding: 15px; border-radius: 5px; }}
-                    .sql {{ background: #222; color: #0f0; padding: 15px; font-family: monospace; border-radius: 5px; overflow-x: auto; white-space: pre-wrap; }}
+                    .sql {{ background: #222; color: #0f0; padding: 15px; font-family: monospace;
+                            border-radius: 5px; white-space: pre-wrap; }}
                     table {{ border-collapse: collapse; width: 100%; margin-top: 20px; }}
                     th, td {{ border: 1px solid #ddd; padding: 10px; }}
                 </style></head>
                 <body>
                     <div class="container">
-                        <div class="header"><h2>{title}</h2><h3>Режим: {'Безопасно' if use_safe else 'УЯЗВИМО'}</h3></div>
+                        <div class="header">
+                            <h2>{title}</h2>
+                            <h3>Режим: {'Безопасно' if use_safe else 'УЯЗВИМО'}</h3>
+                        </div>
+
                         <p><b>Статус:</b> {status}</p>
+
                         <p><b>SQL запрос:</b></p>
                         <div class="sql">{query_text}</div>
+
                         <table>
                             <thead><tr>{" ".join([f"<th>{c}</th>" for c in cols])}</tr></thead>
-                            <tbody>{rows if rows else "<tr><td colspan='10' style='text-align:center;'>Нет данных / Таблица удалена</td></tr>"}</tbody>
+                            <tbody>
+                                {rows if rows else "<tr><td colspan='10'>Нет данных</td></tr>"}
+                            </tbody>
                         </table>
+
                         <br><a href="/">← Назад</a>
                     </div>
                 </body></html>
                 """
+
                 self.send_response(200)
                 self.send_header('Content-type', 'text/html; charset=utf-8')
                 self.end_headers()
@@ -340,50 +401,14 @@ class MyHandler(BaseHTTPRequestHandler):
             from routes.auth_routes import verify
             return verify(self, data)
 
-        # --- СЕКЦИЯ 2: АДМИН-ПАНЕЛЬ (ТРЕБУЕТ 2FA) ---
+        # =========================
+        # АДМИН ПАНЕЛЬ
+        # =========================
         session = self.get_session()
         if not session or not session.get("2fa"):
             return self.redirect("/")
 
-        if path == "/buy":
-            lic_id = data.get("license_id", [None])[0]
-            if lic_id: self.handle_purchase_logic(lic_id)
-            self.redirect("/licenses")
-        elif path == "/add_product":
-            n, v, p = data.get("name", [""])[0], data.get("version", [""])[0], data.get("price", [""])[0]
-            if n and v and p:
-                from models.product_model import add_product
-                add_product(n, v, p)
-            self.redirect("/products")
-        elif path == "/edit_product":
-            i, n, v, pr = data.get("product_id", [""])[0], data.get("name", [""])[0], data.get("version", [""])[0], \
-            data.get("price", [""])[0]
-            if i and n and v and pr:
-                from models.product_model import update_product
-                update_product(i, n, v, pr)
-            self.redirect("/products")
-        elif path == "/add_license":
-            pi, lt, d = data.get("product_id", [""])[0], data.get("license_type", [""])[0], \
-            data.get("duration_days", [""])[0]
-            if pi and lt and d:
-                from models.license_model import add_license
-                add_license(pi, lt, d)
-            self.redirect("/licenses")
-        elif path == "/edit_license":
-            li, pi, lt, d = data.get("license_id", [""])[0], data.get("product_id", [""])[0], \
-            data.get("license_type", [""])[0], data.get("duration_days", [""])[0]
-            if li and pi and lt and d:
-                from models.license_model import update_license
-                update_license(li, pi, lt, d)
-            self.redirect("/licenses")
-        elif path == "/add_key":
-            li, kc = data.get("license_id", [""])[0], data.get("license_key", [""])[0]
-            if li and kc:
-                from models.key_model import add_new_key
-                add_new_key(li, kc)
-            self.redirect("/keys")
-        else:
-            self.send_error(404, "Путь не найден")
+        self.send_error(404, "Путь не найден")
 
     # Вспомогательный метод для обработки покупки
     def handle_purchase_logic(self, lic_id):
