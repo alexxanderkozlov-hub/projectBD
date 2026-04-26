@@ -199,7 +199,7 @@ class MyHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         import urllib.parse
         import json
-        import re  # Добавили для корректной очистки меток
+        import re
         import injections.task_1 as t1
         import injections.task_2 as t2
         import injections.task_3 as t3
@@ -207,6 +207,7 @@ class MyHandler(BaseHTTPRequestHandler):
         import injections.task_5 as t5
         import injections.task_6 as t6
         import injections.task_7 as t7
+        import injections.task_8 as t8  # ДОБАВИЛИ
 
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length).decode('utf-8')
@@ -258,41 +259,52 @@ class MyHandler(BaseHTTPRequestHandler):
             login_val = data.get('login', [''])[0].strip()
             pass_val = data.get('password', [''])[0].strip()
 
-            # =========================
-            # ОПРЕДЕЛЕНИЕ ЗАДАНИЙ
-            # =========================
-            # Используем .upper() только для ПРОВЕРКИ, но не меняем саму переменную login_val
             lv_up = login_val.upper()
 
+            # ОПРЕДЕЛЕНИЕ ЗАДАНИЙ
+            is_task_8 = "HEADER" in lv_up  # НОВОЕ ЗАДАНИЕ
             is_task_7 = "META" in lv_up
             is_task_6 = "PAGE" in lv_up
             is_task_5 = "CTE" in lv_up
 
-            is_task_3 = not (is_task_5 or is_task_6 or is_task_7) and (
+            is_task_3 = not (is_task_5 or is_task_6 or is_task_7 or is_task_8) and (
                     "' OR '" in login_val or "' OR '" in pass_val)
 
-            is_task_2 = not (is_task_5 or is_task_3 or is_task_6 or is_task_7) and (
+            is_task_2 = not (is_task_5 or is_task_3 or is_task_6 or is_task_7 or is_task_8) and (
                     ";" in login_val or "DROP" in lv_up or "%" in login_val)
 
-            is_task_1 = not (is_task_5 or is_task_3 or is_task_2 or is_task_6 or is_task_7) and (
+            is_task_1 = not (is_task_5 or is_task_3 or is_task_2 or is_task_6 or is_task_7 or is_task_8) and (
                     login_val.isdigit() or "OR" in lv_up)
 
-            # =========================
             # ОБЩИЙ БЛОК
-            # =========================
-            if is_task_1 or is_task_2 or is_task_3 or is_task_5 or is_task_6 or is_task_7:
+            if is_task_1 or is_task_2 or is_task_3 or is_task_5 or is_task_6 or is_task_7 or is_task_8:
 
                 use_safe = (pass_val.lower() == "safe")
                 status = "Обработка запроса"
+                results = []
+
+                # =========================
+                # ЗАДАНИЕ 8 (HTTP HEADER)
+                # =========================
+                if is_task_8:
+                    # Читаем заголовок User-Agent напрямую из self.headers
+                    ua_value = self.headers.get('User-Agent', 'Unknown')
+
+                    if use_safe:
+                        _, query_text, status = t8.run_task_8_safe(ua_value)
+                    else:
+                        _, query_text, status = t8.run_task_8(ua_value)
+
+                    title = "Задание №8: Инъекция через HTTP Header"
+                    cols = ["Информация"]
+                    results = [[f"Записанный User-Agent: {ua_value}"]]
 
                 # =========================
                 # ЗАДАНИЕ 7 (UNION METADATA)
                 # =========================
-                if is_task_7:
-                    # Удаляем "META" без учета регистра, сохраняя остальной текст
+                elif is_task_7:
                     clean_id = re.sub(r'(?i)META', '', login_val).strip()
-                    if not clean_id:
-                        clean_id = "1"
+                    if not clean_id: clean_id = "1"
 
                     if use_safe:
                         results, query_text, status = t7.run_task_7_safe(clean_id)
@@ -306,10 +318,8 @@ class MyHandler(BaseHTTPRequestHandler):
                 # ЗАДАНИЕ 6 (PAGINATION)
                 # =========================
                 elif is_task_6:
-                    # Удаляем "PAGE" без учета регистра
                     clean_params = re.sub(r'(?i)PAGE', '', login_val).strip()
                     parts = clean_params.split()
-
                     limit = parts[0] if len(parts) > 0 else "2"
                     offset = parts[1] if len(parts) > 1 else "0"
 
@@ -326,8 +336,7 @@ class MyHandler(BaseHTTPRequestHandler):
                 # =========================
                 elif is_task_5:
                     clean_id = re.sub(r'(?i)CTE', '', login_val).strip()
-                    if not clean_id:
-                        clean_id = "1"
+                    if not clean_id: clean_id = "1"
 
                     if use_safe:
                         results, query_text, status = t5.run_task_5_safe(clean_id)
@@ -371,11 +380,8 @@ class MyHandler(BaseHTTPRequestHandler):
                     status = "Данные извлечены"
                     cols = ["user_id", "role_id", "login", "password_hash", "totp_secret"]
 
-                # =========================
-                # HTML ОТВЕТ
-                # =========================
+                # HTML ОТВЕТ (общий для всех заданий)
                 color = "#4CAF50" if use_safe else "#f44336"
-
                 rows = ""
                 for r in results:
                     rows += "<tr>" + "".join([f"<td>{item}</td>" for item in r]) + "</tr>"
@@ -411,7 +417,6 @@ class MyHandler(BaseHTTPRequestHandler):
                     </div>
                 </body></html>
                 """
-
                 self.send_response(200)
                 self.send_header('Content-type', 'text/html; charset=utf-8')
                 self.end_headers()
