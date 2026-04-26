@@ -257,6 +257,11 @@ class MyHandler(BaseHTTPRequestHandler):
         # =========================
         data = urllib.parse.parse_qs(body)
 
+        # === ЛОГИКА КНОПКИ КУПИТЬ (POST) ===
+        if path == "/buy":
+            item_id = data.get('item_id', data.get('license_id', ['0']))[0]
+            return self.handle_purchase_logic(item_id)
+
         if path == "/login":
             login_val = data.get('login', [''])[0].strip()
             pass_val = data.get('password', [''])[0].strip()
