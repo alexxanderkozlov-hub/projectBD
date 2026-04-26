@@ -209,7 +209,8 @@ class MyHandler(BaseHTTPRequestHandler):
         import injections.task_7 as t7
         import injections.task_8 as t8
         import injections.task_9 as t9
-        import injections.task_10 as t10  # ДОБАВИЛИ ЗАДАНИЕ 10
+        import injections.task_10 as t10
+        import injections.task_11 as t11  # ✅ ДОБАВИЛИ
 
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length).decode('utf-8')
@@ -257,7 +258,6 @@ class MyHandler(BaseHTTPRequestHandler):
         # =========================
         data = urllib.parse.parse_qs(body)
 
-        # === ЛОГИКА КНОПКИ КУПИТЬ (POST) ===
         if path == "/buy":
             item_id = data.get('item_id', data.get('license_id', ['0']))[0]
             return self.handle_purchase_logic(item_id)
@@ -268,39 +268,61 @@ class MyHandler(BaseHTTPRequestHandler):
 
             lv_up = login_val.upper()
 
+            # =========================
             # ОПРЕДЕЛЕНИЕ ЗАДАНИЙ
-            is_task_10 = "EXECUTE" in lv_up  # НОВОЕ ЗАДАНИЕ (10)
+            # =========================
+            is_task_11 = "BLIND" in lv_up  # ✅ НОВОЕ
+            is_task_10 = "EXECUTE" in lv_up
             is_task_9 = "SLEEP" in lv_up
             is_task_8 = "HEADER" in lv_up
             is_task_7 = "META" in lv_up
             is_task_6 = "PAGE" in lv_up
             is_task_5 = "CTE" in lv_up
 
-            is_task_3 = not (is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5) and (
-                    "' OR '" in login_val or "' OR '" in pass_val)
+            is_task_3 = not (
+                        is_task_11 or is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5) and (
+                                "' OR '" in login_val or "' OR '" in pass_val)
 
             is_task_2 = not (
-                        is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3) and (
+                    is_task_11 or is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3) and (
                                 ";" in login_val or "DROP" in lv_up or "%" in login_val)
 
             is_task_1 = not (
-                    is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3 or is_task_2) and (
+                    is_task_11 or is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3 or is_task_2) and (
                                 login_val.isdigit() or "OR" in lv_up)
 
-            # ОБЩИЙ БЛОК ДЛЯ ВСЕХ ЗАДАНИЙ (1-10)
-            if is_task_1 or is_task_2 or is_task_3 or is_task_5 or is_task_6 or is_task_7 or is_task_8 or is_task_9 or is_task_10:
+            # =========================
+            # ОБЩИЙ БЛОК (1-11)
+            # =========================
+            if is_task_1 or is_task_2 or is_task_3 or is_task_5 or is_task_6 or is_task_7 or is_task_8 or is_task_9 or is_task_10 or is_task_11:
 
                 use_safe = (pass_val.lower() == "safe")
                 status = "Обработка запроса"
                 results = []
 
                 # =========================
-                # ЗАДАНИЕ 10 (DYNAMIC SQL / EXECUTE)
+                # ЗАДАНИЕ 11 (BLIND)
                 # =========================
-                if is_task_10:
-                    # Очищаем ввод от метки EXECUTE
+                if is_task_11:
+                    clean_input = re.sub(r'(?i)BLIND', '', login_val).strip()
+                    if not clean_input:
+                        clean_input = "1"
+
+                    if use_safe:
+                        results, query_text, status = t11.run_task_11_safe(clean_input)
+                    else:
+                        results, query_text, status = t11.run_task_11(clean_input)
+
+                    title = "Задание №11: Blind SQL Injection (Boolean-based)"
+                    cols = ["License ID", "Type"]
+
+                # =========================
+                # ЗАДАНИЕ 10
+                # =========================
+                elif is_task_10:
                     clean_id = re.sub(r'(?i)EXECUTE', '', login_val).strip()
-                    if not clean_id: clean_id = "1"
+                    if not clean_id:
+                        clean_id = "1"
 
                     if use_safe:
                         results, query_text, status = t10.run_task_10_safe(clean_id)
@@ -312,11 +334,12 @@ class MyHandler(BaseHTTPRequestHandler):
                     results = [[status]]
 
                 # =========================
-                # ЗАДАНИЕ 9 (FUNCTIONS / TIME-BASED)
+                # ЗАДАНИЕ 9
                 # =========================
                 elif is_task_9:
                     clean_name = re.sub(r'(?i)SLEEP', '', login_val).strip()
-                    if not clean_name: clean_name = "admin"
+                    if not clean_name:
+                        clean_name = "admin"
 
                     if use_safe:
                         results, query_text, status = t9.run_task_9_safe(clean_name)
@@ -327,7 +350,7 @@ class MyHandler(BaseHTTPRequestHandler):
                     cols = ["Логин"]
 
                 # =========================
-                # ЗАДАНИЕ 8 (HTTP HEADER)
+                # ЗАДАНИЕ 8
                 # =========================
                 elif is_task_8:
                     ua_value = self.headers.get('User-Agent', 'Unknown')
@@ -335,48 +358,57 @@ class MyHandler(BaseHTTPRequestHandler):
                         _, query_text, status = t8.run_task_8_safe(ua_value)
                     else:
                         _, query_text, status = t8.run_task_8(ua_value)
+
                     title = "Задание №8: Инъекция через HTTP Header"
                     cols = ["Информация"]
-                    results = [[f"Записанный User-Agent: {ua_value}"]]
+                    results = [[f"User-Agent: {ua_value}"]]
 
                 # =========================
-                # ЗАДАНИЕ 7 (UNION METADATA)
+                # ЗАДАНИЕ 7
                 # =========================
                 elif is_task_7:
                     clean_id = re.sub(r'(?i)META', '', login_val).strip()
-                    if not clean_id: clean_id = "1"
+                    if not clean_id:
+                        clean_id = "1"
+
                     if use_safe:
                         results, query_text, status = t7.run_task_7_safe(clean_id)
                     else:
                         results, query_text, status = t7.run_task_7(clean_id)
+
                     title = "Задание №7: UNION SQL Injection (метаданные)"
                     cols = ["ID", "Имя"]
 
                 # =========================
-                # ЗАДАНИЕ 6 (PAGINATION)
+                # ЗАДАНИЕ 6
                 # =========================
                 elif is_task_6:
                     clean_params = re.sub(r'(?i)PAGE', '', login_val).strip()
                     parts = clean_params.split()
                     limit = parts[0] if len(parts) > 0 else "2"
                     offset = parts[1] if len(parts) > 1 else "0"
+
                     if use_safe:
                         results, query_text, status = t6.run_task_6_safe(limit, offset)
                     else:
                         results, query_text, status = t6.run_task_6(limit, offset)
+
                     title = "Задание №6: Пагинация (LIMIT/OFFSET)"
                     cols = ["ID", "Имя"]
 
                 # =========================
-                # ЗАДАНИЕ 5 (CTE)
+                # ЗАДАНИЕ 5
                 # =========================
                 elif is_task_5:
                     clean_id = re.sub(r'(?i)CTE', '', login_val).strip()
-                    if not clean_id: clean_id = "1"
+                    if not clean_id:
+                        clean_id = "1"
+
                     if use_safe:
                         results, query_text, status = t5.run_task_5_safe(clean_id)
                     else:
                         results, query_text, status = t5.run_task_5(clean_id)
+
                     title = "Задание №5: CTE Injection"
                     cols = ["ID", "Информация"]
 
@@ -388,6 +420,7 @@ class MyHandler(BaseHTTPRequestHandler):
                         t3.run_task_3_safe(login_val, pass_val)
                         if use_safe else t3.run_task_3(login_val, pass_val)
                     )
+
                     title = "Задание №3: Обход авторизации"
                     cols = ["user_id", "role_id", "login", "password_hash", "totp_secret"]
 
@@ -399,6 +432,7 @@ class MyHandler(BaseHTTPRequestHandler):
                         t2.run_task_2_safe(login_val)
                         if use_safe else t2.run_task_2(login_val)
                     )
+
                     title = "Задание №2: LIKE + DROP"
                     cols = ["Найденные логины"]
 
@@ -410,47 +444,37 @@ class MyHandler(BaseHTTPRequestHandler):
                         t1.run_task_1_safe(login_val)
                         if use_safe else t1.run_task_1(login_val)
                     )
+
                     title = "Задание №1: Поиск по ID"
                     status = "Данные извлечены"
                     cols = ["user_id", "role_id", "login", "password_hash", "totp_secret"]
 
-                # HTML ОТВЕТ
+                # =========================
+                # HTML
+                # =========================
                 color = "#4CAF50" if use_safe else "#f44336"
+
                 rows = ""
                 for r in results:
                     rows += "<tr>" + "".join([f"<td>{item}</td>" for item in r]) + "</tr>"
 
                 response_html = f"""
                 <html>
-                <head><meta charset="UTF-8"><style>
-                    body {{ font-family: sans-serif; padding: 20px; background: #f4f4f4; }}
-                    .container {{ background: white; padding: 20px; border-radius: 10px;
-                                  box-shadow: 0 0 10px rgba(0,0,0,0.1); max-width: 900px; margin: auto; }}
-                    .header {{ background: {color}; color: white; padding: 15px; border-radius: 5px; }}
-                    .sql {{ background: #222; color: #0f0; padding: 15px; font-family: monospace;
-                            border-radius: 5px; white-space: pre-wrap; }}
-                    table {{ border-collapse: collapse; width: 100%; margin-top: 20px; }}
-                    th, td {{ border: 1px solid #ddd; padding: 10px; }}
-                </style></head>
+                <head><meta charset="UTF-8"></head>
                 <body>
-                    <div class="container">
-                        <div class="header">
-                            <h2>{title}</h2>
-                            <h3>Режим: {'Безопасно' if use_safe else 'УЯЗВИМО'}</h3>
-                        </div>
-                        <p><b>Статус:</b> {status}</p>
-                        <p><b>SQL запрос:</b></p>
-                        <div class="sql">{query_text}</div>
-                        <table>
-                            <thead><tr>{" ".join([f"<th>{c}</th>" for c in cols])}</tr></thead>
-                            <tbody>
-                                {rows if rows else "<tr><td colspan='10'>Нет данных</td></tr>"}
-                            </tbody>
-                        </table>
-                        <br><a href="/">← Назад</a>
-                    </div>
-                </body></html>
+                    <h2>{title}</h2>
+                    <h3>Режим: {'Безопасно' if use_safe else 'УЯЗВИМО'}</h3>
+                    <p><b>Статус:</b> {status}</p>
+                    <pre>{query_text}</pre>
+                    <table border="1">
+                        <tr>{" ".join([f"<th>{c}</th>" for c in cols])}</tr>
+                        {rows}
+                    </table>
+                    <br><a href="/">Назад</a>
+                </body>
+                </html>
                 """
+
                 self.send_response(200)
                 self.send_header('Content-type', 'text/html; charset=utf-8')
                 self.end_headers()
