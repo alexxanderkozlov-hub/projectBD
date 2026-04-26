@@ -198,101 +198,115 @@ class MyHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         import urllib.parse
+        import json
         import injections.task_1 as t1
         import injections.task_2 as t2
         import injections.task_3 as t3
+        import injections.task_4 as t4
 
-        # 1. Получаем данные из тела запроса
+        # 1. Считываем тело запроса
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length).decode('utf-8')
-        data = urllib.parse.parse_qs(body)
 
         path = self.path
         print(f"--- POST запрос: {path} ---")
 
-        # --- СЕКЦИЯ 1: АВТОРИЗАЦИЯ И ЛАБОРАТОРНЫЕ ЗАДАНИЯ ---
+        # --- ЗАДАНИЕ №4: ОБРАБОТКА API (JSON) ---
+        if path == "/api/add_user":
+            try:
+                # Парсим JSON из тела
+                json_data = json.loads(body)
+                u_id = json_data.get("id")
+                name_val = json_data.get("name", "")
+
+                # Режим защиты: если в JSON "name" есть слово "safe"
+                use_safe = "safe" in name_val.lower()
+
+                if use_safe:
+                    msg, query_text, db_status = t4.run_task_4_safe(u_id, name_val)
+                else:
+                    msg, query_text, db_status = t4.run_task_4(u_id, name_val)
+
+                # API должно отвечать в формате JSON
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+
+                response = {
+                    "title": "Задание №4: Инъекция в JSON API",
+                    "mode": "Безопасно" if use_safe else "УЯЗВИМО",
+                    "status": msg,
+                    "sql_query": query_text,
+                    "database_info": db_status
+                }
+                self.wfile.write(json.dumps(response, ensure_ascii=False).encode('utf-8'))
+                return
+            except Exception as e:
+                self.send_error(400, f"Ошибка парсинга JSON: {str(e)}")
+                return
+
+        # --- СЕКЦИЯ 1: АВТОРИЗАЦИЯ И ЛАБОРАТОРНЫЕ (HTML ФОРМЫ) ---
+        data = urllib.parse.parse_qs(body)  # Для обычных форм парсим как query string
+
         if path == "/login":
             login_val = data.get('login', [''])[0].strip()
             pass_val = data.get('password', [''])[0].strip()
 
             # ОПРЕДЕЛЯЕМ ЗАДАНИЕ
-            # Задание 3: Классический обход (кавычка + OR)
             is_task_3 = "' OR '" in login_val or "' OR '" in pass_val
-
-            # Задание 2: LIKE, DROP или точка с запятой (если не сработал триггер Задания 3)
             is_task_2 = not is_task_3 and (";" in login_val or "DROP" in login_val.upper() or "%" in login_val)
-
-            # Задание 1: Поиск по ID (число или просто слово OR без кавычек)
             is_task_1 = not is_task_3 and not is_task_2 and (login_val.isdigit() or "OR" in login_val.upper())
 
             if is_task_1 or is_task_2 or is_task_3:
-                # Режим защиты включается, если в поле пароля написано "safe"
                 use_safe = (pass_val.lower() == "safe")
 
                 if is_task_3:
-                    # ВЫПОЛНЯЕМ ЗАДАНИЕ 3 (Обход логин/пароль)
                     results, status, query_text = t3.run_task_3_safe(login_val,
                                                                      pass_val) if use_safe else t3.run_task_3(login_val,
                                                                                                               pass_val)
-                    title = "Задание №3: Обход авторизации (AND/OR)"
+                    title = "Задание №3: Обход авторизации"
                     cols = ["user_id", "role_id", "login", "password_hash", "totp_secret"]
                 elif is_task_2:
-                    # ВЫПОЛНЯЕМ ЗАДАНИЕ 2 (LIKE + DROP)
                     results, status, query_text = t2.run_task_2_safe(login_val) if use_safe else t2.run_task_2(
                         login_val)
                     title = "Задание №2: LIKE + DROP"
                     cols = ["Найденные логины"]
                 else:
-                    # ВЫПОЛНЯЕМ ЗАДАНИЕ 1 (Поиск по ID)
                     results, query_text = t1.run_task_1_safe(login_val) if use_safe else t1.run_task_1(login_val)
                     title = "Задание №1: Поиск по ID"
                     status = "Данные извлечены"
                     cols = ["user_id", "role_id", "login", "password_hash", "totp_secret"]
 
-                # Цветовая индикация
                 color = "#4CAF50" if use_safe else "#f44336"
-                mode_text = "Безопасно (Параметризация)" if use_safe else "Уязвимо (f-строка)"
 
-                # Формируем строки таблицы
+                # Рендерим HTML результат (как в прошлых заданиях)
                 rows = ""
                 for r in results:
                     rows += "<tr>" + "".join([f"<td>{item}</td>" for item in r]) + "</tr>"
 
-                # Формируем ответ
                 response_html = f"""
                 <html>
-                <head><meta charset="UTF-8">
-                <style>
+                <head><meta charset="UTF-8"><style>
                     body {{ font-family: sans-serif; padding: 20px; background: #f4f4f4; }}
                     .container {{ background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); max-width: 900px; margin: auto; }}
-                    .header {{ background: {color}; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
-                    .sql {{ background: #222; color: #0f0; padding: 15px; font-family: monospace; border-radius: 5px; overflow-x: auto; }}
+                    .header {{ background: {color}; color: white; padding: 15px; border-radius: 5px; }}
+                    .sql {{ background: #222; color: #0f0; padding: 15px; font-family: monospace; border-radius: 5px; }}
                     table {{ border-collapse: collapse; width: 100%; margin-top: 20px; }}
-                    th, td {{ border: 1px solid #ddd; padding: 10px; text-align: left; }}
-                    th {{ background: #eee; }}
-                    .status-msg {{ font-weight: bold; font-size: 1.1em; color: {'#2e7d32' if 'РАЗРЕШЕН' in status or 'извлечены' in status else '#c62828'}; }}
-                </style>
-                </head>
+                    th, td {{ border: 1px solid #ddd; padding: 10px; }}
+                </style></head>
                 <body>
                     <div class="container">
-                        <div class="header">
-                            <h2>{title}</h2>
-                            <h3>Режим: {mode_text}</h3>
-                        </div>
-                        <p class="status-msg">Статус: {status}</p>
-                        <p><b>Ввод логина:</b> <code>{login_val}</code></p>
-                        <p><b>Ввод пароля:</b> <code>{pass_val}</code></p>
+                        <div class="header"><h2>{title}</h2><h3>Режим: {'Безопасно' if use_safe else 'УЯЗВИМО'}</h3></div>
+                        <p><b>Статус:</b> {status}</p>
                         <p><b>SQL запрос:</b></p>
                         <div class="sql">{query_text}</div>
-
                         <table>
                             <thead><tr>{" ".join([f"<th>{c}</th>" for c in cols])}</tr></thead>
-                            <tbody>{rows if rows else "<tr><td colspan='10' style='text-align:center;'>Нет данных / Доступ запрещен</td></tr>"}</tbody>
+                            <tbody>{rows if rows else "<tr><td colspan='10' style='text-align:center;'>Нет данных</td></tr>"}</tbody>
                         </table>
-                        <br><a href="/">← Назад к входу</a>
+                        <br><a href="/">← Назад</a>
                     </div>
-                </body>
-                </html>
+                </body></html>
                 """
                 self.send_response(200)
                 self.send_header('Content-type', 'text/html; charset=utf-8')
@@ -300,7 +314,6 @@ class MyHandler(BaseHTTPRequestHandler):
                 self.wfile.write(response_html.encode('utf-8'))
                 return
 
-            # Если обычный вход
             from routes.auth_routes import login
             return login(self, data)
 
@@ -308,54 +321,49 @@ class MyHandler(BaseHTTPRequestHandler):
             from routes.auth_routes import verify
             return verify(self, data)
 
-        # --- СЕКЦИЯ 2: АДМИН-ПАНЕЛЬ (ТРЕБУЕТ АВТОРИЗАЦИИ) ---
+        # --- СЕКЦИЯ 2: АДМИН-ПАНЕЛЬ (ТРЕБУЕТ 2FA) ---
         session = self.get_session()
         if not session or not session.get("2fa"):
             return self.redirect("/")
 
+        # Обработка действий админки (buy, add_product, edit_license и т.д.)
         if path == "/buy":
             lic_id = data.get("license_id", [None])[0]
             if lic_id: self.handle_purchase_logic(lic_id)
             self.redirect("/licenses")
-
         elif path == "/add_product":
-            name, version, price = data.get("name", [""])[0], data.get("version", [""])[0], data.get("price", [""])[0]
-            if name and version and price:
+            n, v, p = data.get("name", [""])[0], data.get("version", [""])[0], data.get("price", [""])[0]
+            if n and v and p:
                 from models.product_model import add_product
-                add_product(name, version, price)
+                add_product(n, v, p)
             self.redirect("/products")
-
         elif path == "/edit_product":
-            p_id, name, v, pr = data.get("product_id", [""])[0], data.get("name", [""])[0], data.get("version", [""])[
-                0], data.get("price", [""])[0]
-            if p_id and name and v and pr:
+            i, n, v, p = data.get("product_id", [""])[0], data.get("name", [""])[0], data.get("version", [""])[0], \
+            data.get("price", [""])[0]
+            if i and n and v and p:
                 from models.product_model import update_product
-                update_product(p_id, name, v, pr)
-            return self.redirect("/products")
-
+                update_product(i, n, v, p)
+            self.redirect("/products")
         elif path == "/add_license":
-            p_id, lt, d = data.get("product_id", [""])[0], data.get("license_type", [""])[0], \
+            pi, lt, d = data.get("product_id", [""])[0], data.get("license_type", [""])[0], \
             data.get("duration_days", [""])[0]
-            if p_id and lt and d:
+            if pi and lt and d:
                 from models.license_model import add_license
-                add_license(p_id, lt, d)
+                add_license(pi, lt, d)
             self.redirect("/licenses")
-
         elif path == "/edit_license":
-            l_id, p_id, lt, ds = data.get("license_id", [""])[0], data.get("product_id", [""])[0], \
+            li, pi, lt, d = data.get("license_id", [""])[0], data.get("product_id", [""])[0], \
             data.get("license_type", [""])[0], data.get("duration_days", [""])[0]
-            if l_id and p_id and lt and ds:
+            if li and pi and lt and d:
                 from models.license_model import update_license
-                update_license(l_id, p_id, lt, ds)
-            return self.redirect("/licenses")
-
+                update_license(li, pi, lt, d)
+            self.redirect("/licenses")
         elif path == "/add_key":
-            l_id, kc = data.get("license_id", [""])[0], data.get("license_key", [""])[0]
-            if l_id and kc:
+            li, kc = data.get("license_id", [""])[0], data.get("license_key", [""])[0]
+            if li and kc:
                 from models.key_model import add_new_key
-                add_new_key(l_id, kc)
+                add_new_key(li, kc)
             self.redirect("/keys")
-
         else:
             self.send_error(404, "Путь не найден")
 
