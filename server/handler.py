@@ -208,7 +208,8 @@ class MyHandler(BaseHTTPRequestHandler):
         import injections.task_6 as t6
         import injections.task_7 as t7
         import injections.task_8 as t8
-        import injections.task_9 as t9  # ДОБАВИЛИ ЗАДАНИЕ 9
+        import injections.task_9 as t9
+        import injections.task_10 as t10  # ДОБАВИЛИ ЗАДАНИЕ 10
 
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length).decode('utf-8')
@@ -263,41 +264,59 @@ class MyHandler(BaseHTTPRequestHandler):
             lv_up = login_val.upper()
 
             # ОПРЕДЕЛЕНИЕ ЗАДАНИЙ
-            is_task_9 = "SLEEP" in lv_up  # НОВОЕ ЗАДАНИЕ (9)
+            is_task_10 = "EXECUTE" in lv_up  # НОВОЕ ЗАДАНИЕ (10)
+            is_task_9 = "SLEEP" in lv_up
             is_task_8 = "HEADER" in lv_up
             is_task_7 = "META" in lv_up
             is_task_6 = "PAGE" in lv_up
             is_task_5 = "CTE" in lv_up
 
-            is_task_3 = not (is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5) and (
+            is_task_3 = not (is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5) and (
                     "' OR '" in login_val or "' OR '" in pass_val)
 
-            is_task_2 = not (is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3) and (
-                    ";" in login_val or "DROP" in lv_up or "%" in login_val)
+            is_task_2 = not (
+                        is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3) and (
+                                ";" in login_val or "DROP" in lv_up or "%" in login_val)
 
             is_task_1 = not (
-                        is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3 or is_task_2) and (
+                    is_task_10 or is_task_9 or is_task_8 or is_task_7 or is_task_6 or is_task_5 or is_task_3 or is_task_2) and (
                                 login_val.isdigit() or "OR" in lv_up)
 
-            # ОБЩИЙ БЛОК ДЛЯ ВСЕХ ЗАДАНИЙ (1-9)
-            if is_task_1 or is_task_2 or is_task_3 or is_task_5 or is_task_6 or is_task_7 or is_task_8 or is_task_9:
+            # ОБЩИЙ БЛОК ДЛЯ ВСЕХ ЗАДАНИЙ (1-10)
+            if is_task_1 or is_task_2 or is_task_3 or is_task_5 or is_task_6 or is_task_7 or is_task_8 or is_task_9 or is_task_10:
 
                 use_safe = (pass_val.lower() == "safe")
                 status = "Обработка запроса"
                 results = []
 
                 # =========================
+                # ЗАДАНИЕ 10 (DYNAMIC SQL / EXECUTE)
+                # =========================
+                if is_task_10:
+                    # Очищаем ввод от метки EXECUTE
+                    clean_id = re.sub(r'(?i)EXECUTE', '', login_val).strip()
+                    if not clean_id: clean_id = "1"
+
+                    if use_safe:
+                        results, query_text, status = t10.run_task_10_safe(clean_id)
+                    else:
+                        results, query_text, status = t10.run_task_10(clean_id)
+
+                    title = "Задание №10: Динамический SQL (EXECUTE)"
+                    cols = ["Статус выполнения"]
+                    results = [[status]]
+
+                # =========================
                 # ЗАДАНИЕ 9 (FUNCTIONS / TIME-BASED)
                 # =========================
-                if is_task_9:
-                    # Убираем метку SLEEP из логина, чтобы выполнить чистый поиск
+                elif is_task_9:
                     clean_name = re.sub(r'(?i)SLEEP', '', login_val).strip()
                     if not clean_name: clean_name = "admin"
 
                     if use_safe:
                         results, query_text, status = t9.run_task_9_safe(clean_name)
                     else:
-                        results, query_text, status = t9.run_task_9(login_val)  # Передаем login_val с инъекцией
+                        results, query_text, status = t9.run_task_9(login_val)
 
                     title = "Задание №9: Инъекция функций БД (Time-Based)"
                     cols = ["Логин"]
