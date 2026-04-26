@@ -199,12 +199,14 @@ class MyHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         import urllib.parse
         import json
+        import re  # Добавили для корректной очистки меток
         import injections.task_1 as t1
         import injections.task_2 as t2
         import injections.task_3 as t3
         import injections.task_4 as t4
         import injections.task_5 as t5
-        import injections.task_6 as t6  # ✅ ДОБАВИЛИ 6 ЗАДАНИЕ
+        import injections.task_6 as t6
+        import injections.task_7 as t7
 
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length).decode('utf-8')
@@ -259,28 +261,54 @@ class MyHandler(BaseHTTPRequestHandler):
             # =========================
             # ОПРЕДЕЛЕНИЕ ЗАДАНИЙ
             # =========================
-            is_task_6 = "PAGE" in login_val.upper()  # ✅ ДОБАВИЛИ
-            is_task_5 = "CTE" in login_val.upper()
-            is_task_3 = not is_task_5 and not is_task_6 and ("' OR '" in login_val or "' OR '" in pass_val)
-            is_task_2 = not is_task_5 and not is_task_3 and not is_task_6 and (
-                    ";" in login_val or "DROP" in login_val.upper() or "%" in login_val)
-            is_task_1 = not is_task_5 and not is_task_3 and not is_task_2 and not is_task_6 and (
-                    login_val.isdigit() or "OR" in login_val.upper())
+            # Используем .upper() только для ПРОВЕРКИ, но не меняем саму переменную login_val
+            lv_up = login_val.upper()
+
+            is_task_7 = "META" in lv_up
+            is_task_6 = "PAGE" in lv_up
+            is_task_5 = "CTE" in lv_up
+
+            is_task_3 = not (is_task_5 or is_task_6 or is_task_7) and (
+                    "' OR '" in login_val or "' OR '" in pass_val)
+
+            is_task_2 = not (is_task_5 or is_task_3 or is_task_6 or is_task_7) and (
+                    ";" in login_val or "DROP" in lv_up or "%" in login_val)
+
+            is_task_1 = not (is_task_5 or is_task_3 or is_task_2 or is_task_6 or is_task_7) and (
+                    login_val.isdigit() or "OR" in lv_up)
 
             # =========================
-            # ОБЩИЙ УСЛОВНЫЙ БЛОК
+            # ОБЩИЙ БЛОК
             # =========================
-            if is_task_1 or is_task_2 or is_task_3 or is_task_5 or is_task_6:
+            if is_task_1 or is_task_2 or is_task_3 or is_task_5 or is_task_6 or is_task_7:
 
                 use_safe = (pass_val.lower() == "safe")
-
                 status = "Обработка запроса"
 
                 # =========================
-                # ЗАДАНИЕ 6 (ПАГИНАЦИЯ)
+                # ЗАДАНИЕ 7 (UNION METADATA)
                 # =========================
-                if is_task_6:
-                    parts = login_val.upper().replace("PAGE", "").strip().split()
+                if is_task_7:
+                    # Удаляем "META" без учета регистра, сохраняя остальной текст
+                    clean_id = re.sub(r'(?i)META', '', login_val).strip()
+                    if not clean_id:
+                        clean_id = "1"
+
+                    if use_safe:
+                        results, query_text, status = t7.run_task_7_safe(clean_id)
+                    else:
+                        results, query_text, status = t7.run_task_7(clean_id)
+
+                    title = "Задание №7: UNION SQL Injection (метаданные)"
+                    cols = ["ID", "Имя"]
+
+                # =========================
+                # ЗАДАНИЕ 6 (PAGINATION)
+                # =========================
+                elif is_task_6:
+                    # Удаляем "PAGE" без учета регистра
+                    clean_params = re.sub(r'(?i)PAGE', '', login_val).strip()
+                    parts = clean_params.split()
 
                     limit = parts[0] if len(parts) > 0 else "2"
                     offset = parts[1] if len(parts) > 1 else "0"
@@ -297,7 +325,7 @@ class MyHandler(BaseHTTPRequestHandler):
                 # ЗАДАНИЕ 5 (CTE)
                 # =========================
                 elif is_task_5:
-                    clean_id = login_val.upper().replace("CTE", "").strip()
+                    clean_id = re.sub(r'(?i)CTE', '', login_val).strip()
                     if not clean_id:
                         clean_id = "1"
 
@@ -306,7 +334,7 @@ class MyHandler(BaseHTTPRequestHandler):
                     else:
                         results, query_text, status = t5.run_task_5(clean_id)
 
-                    title = "Задание №5: Инъекция в CTE"
+                    title = "Задание №5: CTE Injection"
                     cols = ["ID", "Информация"]
 
                 # =========================
@@ -370,19 +398,15 @@ class MyHandler(BaseHTTPRequestHandler):
                             <h2>{title}</h2>
                             <h3>Режим: {'Безопасно' if use_safe else 'УЯЗВИМО'}</h3>
                         </div>
-
                         <p><b>Статус:</b> {status}</p>
-
                         <p><b>SQL запрос:</b></p>
                         <div class="sql">{query_text}</div>
-
                         <table>
                             <thead><tr>{" ".join([f"<th>{c}</th>" for c in cols])}</tr></thead>
                             <tbody>
                                 {rows if rows else "<tr><td colspan='10'>Нет данных</td></tr>"}
                             </tbody>
                         </table>
-
                         <br><a href="/">← Назад</a>
                     </div>
                 </body></html>
@@ -401,9 +425,6 @@ class MyHandler(BaseHTTPRequestHandler):
             from routes.auth_routes import verify
             return verify(self, data)
 
-        # =========================
-        # АДМИН ПАНЕЛЬ
-        # =========================
         session = self.get_session()
         if not session or not session.get("2fa"):
             return self.redirect("/")
