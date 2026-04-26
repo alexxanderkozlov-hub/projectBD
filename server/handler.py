@@ -197,7 +197,11 @@ class MyHandler(BaseHTTPRequestHandler):
             return self.send_error(404, f"Путь {path} не найден")
 
     def do_POST(self):
-        # Получаем данные из тела запроса
+        import urllib.parse
+        # Импортируем обе функции из файла заданий
+        from injections.task_1 import run_task_1, run_task_1_safe
+
+        # 1. Получаем и парсим данные из тела запроса
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length).decode('utf-8')
         data = urllib.parse.parse_qs(body)
@@ -205,8 +209,95 @@ class MyHandler(BaseHTTPRequestHandler):
         path = self.path
         print(f"--- POST запрос: {path} ---")
 
-        # --- 1. АВТОРИЗАЦИЯ И ВЕРИФИКАЦИЯ (БЕЗ ПРОВЕРКИ СЕССИИ) ---
+        # --- СЕКЦИЯ 1: АВТОРИЗАЦИЯ И ТЕСТИРОВАНИЕ ИНЪЕКЦИЙ ---
         if path == "/login":
+            login_val = data.get('login', [''])[0].strip()
+            pass_val = data.get('password', [''])[0].strip().lower()  # Пароль как триггер защиты
+
+            # Логика Задания №1 (Поиск по ID + Инъекция)
+            # Срабатывает на цифры (1.1) или на попытку взлома (1.2)
+            if login_val.isdigit() or " " in login_val or "OR" in login_val.upper():
+
+                # 1.3. ПРОВЕРКА РЕЖИМА: Если в поле пароля введено 'safe', используем параметризацию
+                if pass_val == "safe":
+                    results, query_text = run_task_1_safe(login_val)
+                    title = "Результат (БЕЗОПАСНО: Параметризация)"
+                    status_color = "#4CAF50"  # Зеленый
+                    desc = "Данные переданы как параметры. Инъекция невозможна."
+                else:
+                    results, query_text = run_task_1(login_val)
+                    title = "Результат (УЯЗВИМО: f-строка)"
+                    status_color = "#f44336"  # Красный
+                    desc = "Ввод вставлен напрямую в SQL-код. Система уязвима."
+
+                # Формируем строки таблицы (5 колонок согласно вашей БД)
+                rows = ""
+                for r in results:
+                    if len(r) >= 4:
+                        rows += f"""
+                        <tr>
+                            <td>{r[0]}</td>
+                            <td>{r[1]}</td>
+                            <td>{r[2]}</td>
+                            <td>{r[3]}</td>
+                            <td>{r[4] if len(r) > 4 and r[4] else 'NULL'}</td>
+                        </tr>
+                        """
+                    else:
+                        # Вывод ошибки, если запрос упал
+                        rows += f"<tr><td colspan='5' style='color:red;'>{r[0]}</td></tr>"
+
+                response_html = f"""
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; background: #f0f2f5; }}
+                        .card {{ background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+                        .header {{ background: {status_color}; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
+                        table {{ border-collapse: collapse; width: 100%; margin-top: 20px; }}
+                        th, td {{ border: 1px solid #ddd; padding: 12px; text-align: left; }}
+                        th {{ background-color: #f8f9fa; color: #333; }}
+                        .sql-box {{ background: #282c34; color: #98c379; padding: 15px; border-radius: 5px; font-family: 'Courier New', monospace; overflow-x: auto; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="card">
+                        <div class="header">
+                            <h2>{title}</h2>
+                            <p>{desc}</p>
+                        </div>
+                        <p><b>Ваш ввод:</b> <code>{login_val}</code></p>
+                        <p><b>SQL запрос в коде:</b></p>
+                        <div class="sql-box">{query_text}</div>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>user_id</th>
+                                    <th>role_id</th>
+                                    <th>login</th>
+                                    <th>password_hash</th>
+                                    <th>totp_secret</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows if rows else "<tr><td colspan='5' style='text-align:center;'>Записей не найдено</td></tr>"}
+                            </tbody>
+                        </table>
+                        <br>
+                        <a href="/" style="text-decoration: none; color: #007bff;">← Вернуться к форме</a>
+                    </div>
+                </body>
+                </html>
+                """
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(response_html.encode('utf-8'))
+                return
+
+            # Если введено имя (нормальный вход) — вызываем стандартную проверку пароля
             from routes.auth_routes import login
             return login(self, data)
 
@@ -214,13 +305,12 @@ class MyHandler(BaseHTTPRequestHandler):
             from routes.auth_routes import verify
             return verify(self, data)
 
-        # --- 2. ВСЕ ОСТАЛЬНЫЕ ДЕЙСТВИЯ (ТРЕБУЮТ АВТОРИЗАЦИИ И ПРОЙДЕННОГО 2FA) ---
+        # --- СЕКЦИЯ 2: ДЕЙСТВИЯ, ТРЕБУЮЩИЕ АВТОРИЗАЦИИ (2FA) ---
         session = self.get_session()
         if not session or not session.get("2fa"):
-            print(f"[POST] Доступ запрещен: сессия не авторизована для {path}")
+            print(f"[POST] Доступ запрещен: {path}")
             return self.redirect("/")
 
-        # ЛОГИКА ПОКУПКИ (для обычного юзера)
         if path == "/buy":
             lic_id = data.get("license_id", [None])[0]
             if lic_id:
@@ -228,7 +318,6 @@ class MyHandler(BaseHTTPRequestHandler):
             else:
                 self.send_error(400, "ID лицензии не указан")
 
-        # ДОБАВЛЕНИЕ НОВОГО ПРОДУКТА (Admin Only)
         elif path == "/add_product":
             name = data.get("name", [""])[0]
             version = data.get("version", [""])[0]
@@ -243,14 +332,11 @@ class MyHandler(BaseHTTPRequestHandler):
             name = data.get("name", [""])[0]
             version = data.get("version", [""])[0]
             price = data.get("price", [""])[0]
-
             if p_id and name and version and price:
                 from models.product_model import update_product
                 update_product(p_id, name, version, price)
-
             return self.redirect("/products")
 
-        # ДОБАВЛЕНИЕ НОВОЙ ЛИЦЕНЗИИ (Admin Only)
         elif path == "/add_license":
             prod_id = data.get("product_id", [""])[0]
             l_type = data.get("license_type", [""])[0]
@@ -260,20 +346,16 @@ class MyHandler(BaseHTTPRequestHandler):
                 add_license(prod_id, l_type, dur)
             self.redirect("/licenses")
 
-            # СОХРАНЕНИЕ ИЗМЕНЕНИЙ ЛИЦЕНЗИИ (POST)
         elif path == "/edit_license":
             l_id = data.get("license_id", [""])[0]
             p_id = data.get("product_id", [""])[0]
             l_type = data.get("license_type", [""])[0]
             days = data.get("duration_days", [""])[0]
-
             if l_id and p_id and l_type and days:
                 from models.license_model import update_license
                 update_license(l_id, p_id, l_type, days)
-
             return self.redirect("/licenses")
 
-        # ДОБАВЛЕНИЕ КЛЮЧА ВРУЧНУЮ (Admin Only)
         elif path == "/add_key":
             lic_id = data.get("license_id", [""])[0]
             key_code = data.get("license_key", [""])[0]
