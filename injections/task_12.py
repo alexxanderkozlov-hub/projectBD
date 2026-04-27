@@ -53,17 +53,17 @@ def run_task_12(sort_param: str):
 
 
 # =========================
-# БЕЗОПАСНЫЙ РЕЖИМ
+# БЕЗОПАСНЫЙ РЕЖИМ (С ЖЕСТКОЙ ОШИБКОЙ)
 # =========================
 def run_task_12_safe(sort_param: str):
     """
-    Безопасный режим: allowlist сортировки
+    Безопасный режим: allowlist сортировки с блокировкой при неверном вводе
     """
     conn = None
     status = "Список лицензий отсортирован (безопасно)"
     results = []
+    query_text = "Запрос не был сформирован из-за ошибки безопасности."
 
-    # ✔ ВАЖНО: соответствие реальным колонкам БД
     ALLOWED_COLUMNS = {
         "id": "license_id",
         "type": "license_type",
@@ -72,27 +72,32 @@ def run_task_12_safe(sort_param: str):
 
     clean_val = sort_param.lower().strip()
 
-    if clean_val in ALLOWED_COLUMNS:
-        safe_column = ALLOWED_COLUMNS[clean_val]
-    else:
-        safe_column = "license_id"
-        status = "Ввод отклонён. Использована сортировка по умолчанию."
-
-    query_text = f"""
-        SELECT license_id, license_type, duration_days
-        FROM licenses
-        ORDER BY {safe_column};
-    """
-
     try:
+        # ПРОВЕРКА: Если ввода нет в списке разрешенных, вызываем ошибку
+        if clean_val not in ALLOWED_COLUMNS:
+            raise ValueError(f"Недопустимый параметр сортировки: '{sort_param}'")
+
+        safe_column = ALLOWED_COLUMNS[clean_val]
+
+        query_text = f"""
+            SELECT license_id, license_type, duration_days
+            FROM licenses
+            ORDER BY {safe_column};
+        """
+
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
         cur.execute(query_text)
         results = cur.fetchall()
 
+    except ValueError as ve:
+        # Обработка нашей ошибки валидации
+        status = f"Ошибка безопасности: {str(ve)}"
+        results = []  # Очищаем результаты, чтобы таблица была пустой
     except Exception as e:
-        status = f"Ошибка: {str(e)}"
-
+        # Обработка системных ошибок БД
+        status = f"Ошибка БД: {str(e)}"
+        results = []
     finally:
         if conn:
             conn.close()

@@ -381,11 +381,13 @@ class MyHandler(BaseHTTPRequestHandler):
                 # TASK 9
                 # =========================
                 elif is_task_9:
+                    # Для безопасного режима используем очищенное имя (чтобы просто найти юзера)
                     clean_name = re.sub(r'(?i)SLEEP', '', login_val).strip() or "admin"
 
                     if use_safe:
                         results, query_text, status = t9.run_task_9_safe(clean_name)
                     else:
+                        # ВАЖНО: Передаем login_val (оригинал), а не clean_name!
                         results, query_text, status = t9.run_task_9(login_val)
 
                     title = "Задание №9: Инъекция функций БД (Time-Based)"
